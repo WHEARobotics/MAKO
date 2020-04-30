@@ -1,0 +1,16 @@
+## This file tells git to ignore certain files or folders and not try
+## to add them to version control.  In this case, we don't want to 
+## version control the Pycharm project files (will be different on each
+## computer), nor the cache folders that the robotpy_intstaller keeps.
+
+## Python byte-compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+## Pycharm projects
+.idea/
+
+## robotpy_installer cache folders
+opkg_cache/
+pip_cache/
