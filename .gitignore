@@ -14,3 +14,7 @@ __pycache__/
 ## robotpy_installer cache folders
 opkg_cache/
 pip_cache/
+
+## robotpy deploy configuration (no need to version control)
+.deploy_cfg
+

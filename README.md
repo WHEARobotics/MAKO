@@ -10,7 +10,7 @@ of code and hardware as we go.
 # Structure of folders in this repository
 
 * code/
-* code/component_examples/
+* code/sensors/ - reading various sensors
 * code/command_based/ - exploration of the "command based" robot framework.
 * custom_electronics/ - designs for autonomous switch, optical sensor, terminal block holder
 * doc - various documentation
