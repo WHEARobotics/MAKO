@@ -4,34 +4,16 @@
 """
 
 import wpilib
-from rev.color import ColorSensorV3
-from rev.color import ColorMatch
+import color_util # Imports definitions in the file color_util.py that we created (same folder).
 
 class MAKORobot(wpilib.TimedRobot):
     def robotInit(self):
-        """This function is called upon program startup.
-           Initialize shared variables and objects.
+        """This function is called upon program startup as part of WPILIB/FRC/RobotPy.
+           In it, we should initialize the robot's shared variables and objects.
         """
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
+        self.color_handler = color_util.Color_Handler() # A class that takes care of color.
 
-        # REV Robotics color sensor creation and configuration, including a color matching object.
-        # Product is: https://www.revrobotics.com/rev-31-1557/.  This page has a link to the Java/C++ APIs.
-        # Presently (2020-05-04), the RobotPy documentation is limited.
-        self.colorSensor = ColorSensorV3(wpilib.I2C.Port.kOnboard)
-
-        # Define a set of target colors to match against by their normalized RGB values.
-        self.BlueTarget = wpilib.Color(0.133, 0.351, 0.516)
-        self.PurpleTarget = wpilib.Color(0.234, 0.360, 0.406)
-        self.PinkTarget = wpilib.Color(0.427, 0.374, 0.199)
-        self.YellowTarget = wpilib.Color(0.326, 0.583, 0.092)
-
-        # A ColorMatch object has methods to check for matching colors.
-        self.colormatcher = ColorMatch()
-        # Add our target values to colormatcher
-        self.colormatcher.addColorMatch(self.BlueTarget)
-        self.colormatcher.addColorMatch(self.PurpleTarget)
-        self.colormatcher.addColorMatch(self.PinkTarget)
-        self.colormatcher.addColorMatch(self.YellowTarget)
 
     def disabledInit(self):
         """This function gets called once when the robot is disabled.
@@ -60,13 +42,9 @@ class MAKORobot(wpilib.TimedRobot):
 
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
-        detected_color = self.colorSensor.getColor() # color is an object with three fields for the different colors
-        confidence = 0.0 # "confidence" is a dummy variable for Python.  The C function "matchClosestColor()" modifies it, but Python can't do that.
-        matched_color = self.colormatcher.matchClosestColor(detected_color, confidence)
-        if self.isEqualColor(matched_color, self.BlueTarget):
-            match_string = 'blue'
-        else:
-            match_string = 'other'
+        (detected, closest_match) = self.color_handler.get_and_match() # Note that this method returns two colors:
+                                                                       # The detected one and its closest match.
+        match_descr = color_util.get_color_string(closest_match) # Turn into a string.
 
         # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 1.0 seconds.
@@ -74,10 +52,10 @@ class MAKORobot(wpilib.TimedRobot):
             # Send a string representing the red component to a field called 'DB/String 0' on the SmartDashboard.
             # The default driver station dashboard's "Basic" tab has some pre-defined keys/fields
             # that it looks for, which is why I chose these.
-            wpilib.SmartDashboard.putString('DB/String 0', 'red:   {:5.3f}'.format(detected_color.red))
-            wpilib.SmartDashboard.putString('DB/String 1', 'green: {:5.3f}'.format(detected_color.green))
-            wpilib.SmartDashboard.putString('DB/String 2', 'blue:  {:5.3f}'.format(detected_color.blue))
-            wpilib.SmartDashboard.putString('DB/String 3', 'matches: {}'.format(match_string))
+            wpilib.SmartDashboard.putString('DB/String 0', 'red:   {:5.3f}'.format(detected.red))
+            wpilib.SmartDashboard.putString('DB/String 1', 'green: {:5.3f}'.format(detected.green))
+            wpilib.SmartDashboard.putString('DB/String 2', 'blue:  {:5.3f}'.format(detected.blue))
+            wpilib.SmartDashboard.putString('DB/String 3', 'matches: {}'.format(match_descr))
             wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
             wpilib.SmartDashboard.putBoolean('DB/LED 0', True)
 
@@ -90,10 +68,6 @@ class MAKORobot(wpilib.TimedRobot):
             # user_value, and is formatted as a floating point (the "f"), with 4 digits and 2 digits
             # after the decimal place. https://docs.python.org/3/library/string.html#formatstrings
             self.logger.info('Slider 1 is {:4.2f}'.format(user_value))
-
-    def isEqualColor(self, a, b):
-        """Returns true if the two colors are equal."""
-        return ((a.red == b.red) and (a.green == b.green) and (a.blue == b.blue))
 
 
 # The following little bit of code allows us to run the robot program.
