@@ -15,7 +15,7 @@ echo =
 echo    Usage:
 echo    For python, use "python", not "py -3".
 echo    To develop code, change directories/folders to the folder where the code is,
-echo       for example: >cd code\component_examples
+echo       for example: cd code\component_examples
 echo =
 echo    To deploy, "python robot.py deploy" when you are in that same folder.
 echo = 
