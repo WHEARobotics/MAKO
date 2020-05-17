@@ -12,7 +12,7 @@ class MAKORobot(wpilib.TimedRobot):
            In it, we should initialize the robot's shared variables and objects.
         """
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
-        self.color_handler = color_util.Color_Handler() # A class that takes care of color.
+        self.color_pwd = color_util.Color_Password() # A class that looks for a password based on colors.
 
 
     def disabledInit(self):
@@ -42,7 +42,7 @@ class MAKORobot(wpilib.TimedRobot):
 
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
-        (detected, closest_match) = self.color_handler.get_and_match() # Note that this method returns two colors:
+        (password, detected, closest_match) = self.color_pwd.check() # Note that this method returns two colors:
                                                                        # The detected one and its closest match.
         match_descr = color_util.get_color_string(closest_match) # Turn into a string.
 
@@ -57,7 +57,7 @@ class MAKORobot(wpilib.TimedRobot):
             wpilib.SmartDashboard.putString('DB/String 2', 'blue:  {:5.3f}'.format(detected.blue))
             wpilib.SmartDashboard.putString('DB/String 3', 'matches: {}'.format(match_descr))
             wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
-            wpilib.SmartDashboard.putBoolean('DB/LED 0', True)
+            wpilib.SmartDashboard.putBoolean('DB/LED 0', password) # Light the virtual LED if the password has been entered properly.
 
             # You can use your mouse to move the DB/Slider 1 slider on the dashboard, and read
             # the value it shows with the command below.  0.0 below is the default value, should
@@ -67,7 +67,7 @@ class MAKORobot(wpilib.TimedRobot):
             # Note the string format: the part in {} gets replaced by the value of the variable
             # user_value, and is formatted as a floating point (the "f"), with 4 digits and 2 digits
             # after the decimal place. https://docs.python.org/3/library/string.html#formatstrings
-            self.logger.info('Slider 1 is {:4.2f}'.format(user_value))
+            #self.logger.info('Slider 1 is {:4.2f}'.format(user_value))
 
 
 # The following little bit of code allows us to run the robot program.
