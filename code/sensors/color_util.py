@@ -2,6 +2,7 @@
     Utilities and classes to handle color functions.
     Class Color_Handler performs simple matching.
     Class Color_Password performs a password function that you activate by showing it colors.
+    Class Color_Password2 builds on the above with an arbitrary length password defined at initialization.
 
     Note that you should only instantiate a single one of these classes at a time to avoid
     contentions talking to the physical color sensor.
@@ -166,7 +167,7 @@ class Color_Password():
                 # If the color were still blue, we would stay in the FIRST_COLOR state,
                 # but it isn't, so reset to waiting.
                 self.pwd_state = self.PWDStates.WAITING
-                print('Found was not blue or purple; resetting.')  # Print for diagnostics.
+                print('Found was not blue or purple: {:5.3f}, {:5.3f}, {:5.3f}; resetting.'.format(detected_color.red, detected_color.green, detected_color.blue))  # Print for diagnostics.
 
         elif self.pwd_state == self.PWDStates.SECOND_COLOR:
             if is_equal_color(matched_color, YELLOW_TARGET):
@@ -178,7 +179,7 @@ class Color_Password():
                 # If the color were still yellow, we would stay in the SECOND_COLOR state,
                 # but it isn't, so reset to waiting.
                 self.pwd_state = self.PWDStates.WAITING
-                print('Found was not purple or yellow; resetting.')  # Print for diagnostics.
+                print('Found was not purple or yellow: {:5.3f}, {:5.3f}, {:5.3f}; resetting.'.format(detected_color.red, detected_color.green, detected_color.blue))  # Print for diagnostics.
 
         elif self.pwd_state == self.PWDStates.PASSWORD_COMPLETE:
             if is_equal_color(matched_color, YELLOW_TARGET):
@@ -191,7 +192,110 @@ class Color_Password():
         else:
             # It is always a good idea to have a catch-all, in case someone accidentally assigns an incorrect
             # value to self.pwd_state, for instance a string.
-            print('PWDStates.check(): invalid state:', self.pwd_state) # Print an error message (there are other ways to handle errors).
+            print('Color_Password.check(): invalid state:', self.pwd_state) # Print an error message (there are other ways to handle errors).
             self.pwd_state = self.PWDStates.WAITING  # Reset to the initial state.
+
+        return (password_complete, detected_color, matched_color) # We are returning a tuple, with three values.
+
+###############################################
+
+class Color_Password2():
+    """
+    A class that performs a password function based on showing colors to the sensor.
+    The interface is similar to Color_Password, except that the password is initialized
+    with a list of password colors, and can be arbitrarily long.
+
+    After initialization, call the check() method from robot.py's telop_periodic().
+    """
+
+    def __init__(self, pwd=[BLUE_TARGET, PURPLE_TARGET, YELLOW_TARGET]):
+        """
+        Use an optional parameter to initialize the password list.  The default value,
+        given above, is used if no parameter is supplied.
+
+        :param pwd: list of wpilib.Color objects for the password. Must have at least 2 elements.
+        """
+        # Validate the supplied password.
+        if len(pwd) == 0 or len(pwd) == 1:
+            self.pwd_list = [BLUE_TARGET, PURPLE_TARGET, YELLOW_TARGET] # Use the default if the list is too short.
+        else:
+            self.pwd_list = pwd # Otherwise save the parameter into a member variable.
+
+        # A state variable to keep track of how much of the password has been entered.
+        # Because the password is kept in a list, it is convenient to use an index into the list.
+        # The index points to the _next_ color we are looking for, so 0 means the initial color of
+        # the password has not been found.
+        self.pwd_index = 0
+
+        # REV Robotics color sensor creation and configuration, including a color matching object.
+        # Product is: https://www.revrobotics.com/rev-31-1557/.  This page has a link to the Java/C++ APIs.
+        # Presently (2020-05-04), the RobotPy documentation is limited.
+        self.colorSensor = ColorSensorV3(wpilib.I2C.Port.kOnboard)
+
+        # A ColorMatch object has methods to check for matching colors.
+        self.colormatcher = ColorMatch()
+        # Add our target values to colormatcher
+        self.colormatcher.addColorMatch(BLUE_TARGET)
+        self.colormatcher.addColorMatch(PURPLE_TARGET)
+        self.colormatcher.addColorMatch(PINK_TARGET)
+        self.colormatcher.addColorMatch(YELLOW_TARGET)
+        self.colormatcher.addColorMatch(BENCH_TARGET)
+
+    def check(self):
+        """
+        Call this method from teleop_periodic().  It will check the color and progress through
+        a state machine that keeps track of how much of the password has been entered.  The password
+        must be entered by switching directly between colors.  If the sensor detects a background
+        color between the valid colors, it will reset to the initial "waiting" state.
+        This can be a problem because if there are two colors visible to the sensor, it might match
+        a third color.  (Rod's blue and lab bench can read as purple.)
+
+        :return: (password_complete, detected_color, matched_color) - a tuple with a boolean and a two color objects
+                  password_complete: True if all 3 colors were seen in order.
+                  detected_color: the actual RGB values seen by the sensor at the moment.
+                  matched_color: the closest color matched.
+        """
+        password_complete = False # Initialize this temporary value.  Only change it if the password has been found.
+        detected_color = self.colorSensor.getColor() # color is an object with three fields for the different colors
+        confidence = 0.0 # "confidence" is a dummy variable for Python.  The C function "matchClosestColor()"
+                         # modifies confidence to return a value for the current computation, but Python can't modify parameters like that.
+        matched_color = self.colormatcher.matchClosestColor(detected_color, confidence)
+
+        # Do something different depending on what state the password detection process is in. The options are
+        # generally: reset to WAITING, stay in same state, and progress to the next one.
+        if self.pwd_index == 0:
+            # Handle the initial state differently than the rest.
+            if is_equal_color(matched_color, self.pwd_list[self.pwd_index]):
+                print('Color {} found.'.format(self.pwd_index))
+                self.pwd_index += 1 # Increment index so that next time we will check for the next color.
+
+        elif self.pwd_index == len(self.pwd_list):
+            # Also handle the "found" case differently, because we cannot index beyond the end of the list.
+            if is_equal_color(matched_color, self.pwd_list[self.pwd_index-1]):
+                password_complete = True
+            else:
+                self.pwd_index = 0 # A new color that isn't the end has been observed; reset the password checker.
+                print('Waiting for new password.')  # Print for diagnostics.
+
+        elif self.pwd_index > len(self.pwd_list):
+            # It is always a good idea to have a catch-all, in case someone accidentally assigns an incorrect
+            # value to self.pwd_index, in this case longer than the length of the list.
+            print('Color_Password2.check(): invalid state:', self.pwd_index)  # Print an error message (there are other ways to handle errors).
+            self.pwd_index = 0  # Reset to the initial state.
+
+        else:
+            # Handle the rest of the cases, somewhere in the middle of the password.
+            if is_equal_color(matched_color, self.pwd_list[self.pwd_index]):
+                print('Color {} found.'.format(self.pwd_index))
+                self.pwd_index += 1 # Increment index so that next time we will check for the next color.
+                if self.pwd_index == len(self.pwd_list):
+                    password_complete = True # Signal we found the last one.
+                    print('Password found.')
+            elif not is_equal_color(matched_color, self.pwd_list[self.pwd_index-1]):
+                # We compare to the value for index-1, meaning the color previously found (no change)
+                # The reason we treat the index==0 case differently is because we don't want
+                # to use -1 as an index.
+                print('Found an invalid color {:5.3f}, {:5.3f}, {:5.3f}; resetting.'.format(detected_color.red, detected_color.green, detected_color.blue))
+                self.pwd_index = 0
 
         return (password_complete, detected_color, matched_color) # We are returning a tuple, with three values.

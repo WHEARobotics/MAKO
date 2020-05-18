@@ -12,7 +12,7 @@ class MAKORobot(wpilib.TimedRobot):
            In it, we should initialize the robot's shared variables and objects.
         """
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
-        self.color_pwd = color_util.Color_Password() # A class that looks for a password based on colors.
+        self.color_pwd = color_util.Color_Password2() # A class that looks for a password based on colors.
 
 
     def disabledInit(self):
