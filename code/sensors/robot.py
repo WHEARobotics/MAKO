@@ -14,6 +14,15 @@ class MAKORobot(wpilib.TimedRobot):
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
         self.color_pwd = color_util.Color_Password2() # A class that looks for a password based on colors.
 
+        # Gyro measures rate of rotation, and plugs into the "SPI" port on the roboRIO
+        # https://wiki.analog.com/first/adxrs450_gyro_board_frc
+        # Positive rotation is clockwise.
+        self.gyro = wpilib.ADXRS450_Gyro() # Calibration happens during initialization, so keep the robot still when powering on.
+        # It is best to let the robot warm up so that the sensor reaches a steady temperature before calibrating it.  This may not
+        # always be possible in a match situation.  For reference, Rod measured the amount of drift during a 2:30 match by just letting
+        # the robot sit still.  I rebooted robot code between measurements, so that recalibration and zeroing would happen.
+        # First turned on, and then repeated 2.5-minute tests: 9.9, 1.8, 3.0, 16.8 (!), 1.6, 8.0 degrees.
+        # Similar test, after the robot had been on 1/2 hour:  2.4, 1.9, -2.0, 0.3, 0.3, 0.7 degrees.
 
     def disabledInit(self):
         """This function gets called once when the robot is disabled.
@@ -30,6 +39,7 @@ class MAKORobot(wpilib.TimedRobot):
 
     def autonomousInit(self):
         """This function is run once each time the robot enters autonomous mode."""
+        self.gyro.reset()  # Reset at the beginning of a match, because the robot could have been sitting for a while, gyro drifting.
         pass
 
     def autonomousPeriodic(self):
@@ -58,6 +68,7 @@ class MAKORobot(wpilib.TimedRobot):
             wpilib.SmartDashboard.putString('DB/String 3', 'matches: {}'.format(match_descr))
             wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
             wpilib.SmartDashboard.putBoolean('DB/LED 0', password) # Light the virtual LED if the password has been entered properly.
+            wpilib.SmartDashboard.putString('DB/String 5', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
 
             # You can use your mouse to move the DB/Slider 1 slider on the dashboard, and read
             # the value it shows with the command below.  0.0 below is the default value, should
@@ -71,7 +82,7 @@ class MAKORobot(wpilib.TimedRobot):
 
 
 # The following little bit of code allows us to run the robot program.
-# The special variable __name__ contains the name of the module that it is in,
+# In Python, the special variable __name__ contains the name of the module that it is in,
 # or since this file is 'robot.py', it would ordinarily be 'robot'.  The exception
 # is when you are executing the module, as in you typed "python robot.py" at a command
 # prompt.  In that case, the variable is given the special string value '__main__' to
