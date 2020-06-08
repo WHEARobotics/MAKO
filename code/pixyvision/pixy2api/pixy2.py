@@ -27,7 +27,7 @@
 
 """
 
-import enum
+import enum, time
 import wpilib
 
 class Pixy2():
@@ -73,21 +73,165 @@ class Pixy2():
 
     def __init__(self, link):
         """Constructs Pixy2 object wit supplied communication link."""
+        # Stuff from my initial proof-of-concept code
+        self.spi = wpilib.SPI(wpilib.SPI.Port.kOnboardCS0)
+        self.response_buffer = bytearray(Pixy2.PIXY_BUFFERSIZE + Pixy2.PIXY_SEND_HEADER_SIZE)
+
+        # Stuff from Java port
         self.link = link
+        self.length = 0 # Object global that sets the length of data sent to Pixy2.
+        self.type = 0   # Command type sent to Pixy2.
         # Initializes send/return buffer and payload buffer
-        buffer = bytearray(PIXY_BUFFERSIZE + PIXY_SEND_HEADER_SIZE)
-        buffer_payload = bytearray(PIXY_BUFFERSIZE)
+#        buffer = bytearray(PIXY_BUFFERSIZE + PIXY_SEND_HEADER_SIZE)
+#        buffer_payload = bytearray(PIXY_BUFFERSIZE)
         # Initializes tracker objects.
         # self.ccc = Pixy2CCC(self)
         # self.line = Pixy2Line(self)
         # self.video = Pixy2Video(self)
 
-    def init(self, argument):
-        """Initializes Pixy2 and waits for startup to complete
-           @param argument Argument to setup {@link Link}"""
-        # Opens link
-        ret = self.link.open(argument)
-        if ret >= 0:
-            # Tries to connect, times out if unable to communicate after 5 seconds.
-            #for
-            pass
+    # def init(self, argument):
+    #     """Initializes Pixy2 and waits for startup to complete
+    #        @param argument Argument to setup {@link Link}"""
+    #     # Opens link
+    #     ret = self.link.open(argument)
+    #     if ret >= 0:
+    #         # Tries to connect, times out if unable to communicate after 5 seconds.
+    #         #for
+    #         pass
+
+    def getVersion(self):
+        """Get Pixy2 version and store in self.version; return error -- mashing everything together for a first attempt."""
+        self.length = 0
+        self.type = Pixy2.PIXY_TYPE_REQUEST_VERSION
+        self.sendPacket()
+        res = self.receivePacket()
+        # Diagnostics:
+        print(res, self.response_buffer)
+
+        # TODO: create the Version class and use this code below.
+    #     if self.receivePacket() == Pixy2.PIXY_RESULT_OK: # TODO: suggest that the constant be used in the Java version, rather than 0.
+    #         if self.type == PIXY_TYPE_RESPONSE_VERSION:
+    #             self.version # new Version(buffer)
+    #             return self.length  # Success
+    #         elif type == PIXY_TYPE_RESPONSE_ERROR:
+    #             return PIXY_RESULT_BUSY
+    #     return PIXY_RESULT_ERROR # Some kind of bitstream error
+    #
+
+    def getSync(self):
+        """Looks for Pixy2 communication synchronization bytes to find the start of message.
+        Side effect: sets self.m_cs to denote whether this is a checksum packet (True) or not.
+        :returns PIXY_RESULT_OK if sync found, or PIXY_RESULT_ERROR if not.
+        """
+        c = bytearray(1) # A single character
+        attempts = 0
+        cprev = 0
+        i = 0
+        while(True):
+            # Java code, TODO: use spilinklreceive
+            #res = self.receive(c, 1, 0)
+            res = self.spi.read(False, c)
+            if res >= Pixy2.PIXY_RESULT_OK:
+                ret = c[0] & 0xFF
+                # Since we're using little endian, previous byte is least significant byte.
+                start = cprev
+                # Current byte is most significant byte.
+                start |= ret << 8
+                cprev = ret
+                if start == Pixy2.PIXY_CHECKSUM_SYNC:
+                    self.m_cs = True
+                    return Pixy2.PIXY_RESULT_OK
+                if start == Pixy2.PIXY_NO_CHECKSUM_SYNC:
+                    self.m_cs = False
+                    return Pixy2.PIXY_RESULT_OK
+            if i >= 4:
+                if attempts >= 4:
+                    return Pixy2.PIXY_RESULT_ERROR
+                time.sleep(0.000025)
+                # try:
+                #     pass
+                #     # TODO: sleep for 25 microseconds.
+                # except something about interrupted exception:
+                attempts += 1
+                i = 0
+            i += 1
+
+    def sendPacket(self):
+        """Sends packet to Pixy2.  Need to set self.type and self.length beforehand, as well as putting data in self.payload_buffer."""
+        write_buffer = bytearray(Pixy2.PIXY_SEND_HEADER_SIZE + self.length) # For Python functions, need to set the buffer the length of the data.
+        write_buffer[0] = (Pixy2.PIXY_NO_CHECKSUM_SYNC & 0xff)
+        write_buffer[1] = ((Pixy2.PIXY_NO_CHECKSUM_SYNC >> 8) & 0xff)
+        write_buffer[2] = self.type
+        write_buffer[3] = self.length
+        # TODO: need to copy in the self.payload_buffer.
+        self.spi.write(write_buffer)  # This method writes out all the bytes in the buffer.
+        # TODO: for port, need to use the link, and return either bytes sent or error
+
+    def receivePacket(self):
+        """Receives a packet from Pixy2 and puts it in the object global response_buffer for further processing."""
+        res = self.getSync() # Search for the syncronization word, and also decide if it represents a checksum-type packet.
+        if res < 0:
+            return res
+        if self.m_cs:
+            # Checksum sync
+            cs_calc = Pixy2.Checksum()
+            buf = bytearray(4) # Checksum packets have 4 bytes.
+            # This reads in the length of self.buffer, with "True" initiating a transfer.
+            self.spi.read(True, buf) # TODO: shift to using link
+            # res = self.receive(self.buffer, 4, 0)
+            if res < 0:
+                return res
+            self.type = buf[0] & 0xFF
+            self.length = buf[1] & 0xFF
+            csSerial = ((buf[3] & 0xFF) << 8) | (buf[2] & 0xFF)
+            buf = bytearray(self.length)
+            res = self.spi.read(True, buf)  # TODO: shift to using link and checking the checksum.
+            # res = self.receive(self.buffer, self.length, cs_calc)
+            if res < 0:
+                return res
+            # TODO: add the checksum verification from Java.
+        else:
+            # Not a checksum sync.
+            buf = bytearray(2) # Non-Checksum packet headers have only 2 bytes.
+            self.spi.read(True, buf) # TODO: shift to using link
+            #res = self.receive(self.buffer, 4, 0)
+            if res < 0:
+                return res
+            self.type = buf[0] & 0xFF
+            self.length = buf[1] & 0xFF
+            buf = bytearray(self.length)
+            res = self.spi.read(True, buf)  # TODO: shift to using link.
+            if res < 0:
+                return res
+        # If execution has reached here, there have been no errors to cause early return.
+        self.response_buffer[0:self.length] = buf[:] # Put the response into the buffer.
+        return Pixy2.PIXY_RESULT_OK
+
+    #
+    # # TODO: This method belongs in SPILink.py
+    # def receive(self, buf, length_rec, checksum):
+    #     if self.cs != 0:
+    #         self.resetChecksum()
+    #     self.spi.read(False, buf, length_rec)
+    #     for val in range(length_rec):
+    #         csb = buf[i] & 0xFF
+    #         self.updateChecksum(csb)
+    #     return length_rec
+    #
+
+    class Checksum():
+        """Class to hold checksums."""
+
+        def __init__(self):
+            self.cs = 0
+
+        def update(self, b):
+            """Add a byte to the checksum."""
+            self.cs += b
+
+        def get(self):
+            return self.cs
+
+        def reset(self):
+            self.cs = 0
+

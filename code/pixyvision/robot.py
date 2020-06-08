@@ -4,6 +4,7 @@
 """
 
 import wpilib
+import pixy2api.pixy2
 
 class MAKORobot(wpilib.TimedRobot):
     def robotInit(self):
@@ -11,16 +12,10 @@ class MAKORobot(wpilib.TimedRobot):
            In it, we should initialize the robot's shared variables and objects.
         """
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
-        self.spi = wpilib.SPI(wpilib.SPI.Port.kOnboardCS0)
+        self.pixy = pixy2api.pixy2.Pixy2(0)
         # Packet stuff
         self.type = 0
         self.length = 0
-        self.buffer = bytearray(22) #0x108)
-        self.bufferPayload = bytearray(0x104)
-
-        self.cs = 0 # checksum for updateChecksum().
-
-        self.version = 0
 
 
     def disabledInit(self):
@@ -61,97 +56,8 @@ class MAKORobot(wpilib.TimedRobot):
             # user_value, and is formatted as a floating point (the "f"), with 4 digits and 2 digits
             # after the decimal place. https://docs.python.org/3/library/string.html#formatstrings
             self.logger.info('Another value is {:4.2f}'.format(0.33))
-            self.getVersion()
+            self.pixy.getVersion()
 
-    def updateChecksum(self, b):
-        """b is a byte"""
-        self.cs += b
-
-    def getChecksum(self):
-        return self.cs
-
-    def resetChecksum(self):
-        self.cs = 0
-
-    def getVersion(self):
-        """Get Pixy2 version and store in self.version; return error -- mashing everything together for a first attempt."""
-        self.length = 0
-        self. type = 0x0E # PIXY_TYPE_REQUEST_VERSION
-        self.buffer[0] = 0xAE # (PIXY_NO_CHECKSUM_SYNC & 0xff)
-        self.buffer[1] = 0xC1 # ((PIXY_NO_CHECKSUM_SYNC >> 8) & 0xff)
-        self.buffer[2] = 0x0E # PIXY_TYPE_REQUEST_VERSION # type
-        self.buffer[3] = 0 # length of payload
-        buf = bytes(self.buffer[0:4])
-        self.spi.write(buf)# This writes out the bytes in the length of buf
-        self.spi.read(False, self.buffer) # This reads in the length of self.buffer
-        print(self.buffer)
-        # for i in range(6):
-        #     print('0x{:02X} '.format(self.buffer[i]))
-        # print('\r\n')
-
-    #     if self.receivePacket() == 0:
-    #         if self.type == PIXY_TYPE_RESPONSE_RESOLUTION:
-    #             self.version = 1 # new Version(buffer)
-    #             return self.length  # Success
-    #         elif type == PIXY_TYPE_RESPONSE_ERROR:
-    #             return PIXY_RESULT_BUSY
-    #     return PIXY_RESULT_ERROR # Some kind of bitstream error
-    #
-    # def receivePacket(self):
-    #     res = self.getSync()
-    #     if res < 0:
-    #         return res
-    #     if self.m_cs:
-    #         res = self.receive(self.buffer, 4, 0)
-    #         if res < 0:
-    #             return res
-    #         self.type = self.buffer[0] & 0xFF
-    #         self.length = self.buffer[1] & 0xFF
-    #         csSerial = ((self.buffer[3] & 0xFF) << 8) | (self.buffer[2] & 0xFF)
-    #         res = self.receive(self.buffer, self.length, csCalc)
-    #
-    #
-    #     return 0
-    #
-    # def receive(self, buf, length_rec, checksum):
-    #     if self.cs != 0:
-    #         self.resetChecksum()
-    #     self.spi.read(False, buf, length_rec)
-    #     for val in range(length_rec):
-    #         csb = buf[i] & 0xFF
-    #         self.updateChecksum(csb)
-    #     return length_rec
-    #
-    # def getSync(self):
-    #     c = bytearray(1) # A single character
-    #     attempts = 0
-    #     cprev = 0
-    #     i = 0
-    #     while(True):
-    #         res = self.receive(c, 1, 0)
-    #         if res >= PIXY_RESULT_OK:
-    #             ret = c[0] & 0xFF
-    #             # Since we're using little endian, previous byte is least significant byte.
-    #             start = cprev
-    #             # Current byte is most significant byte.
-    #             start |= ret << 8
-    #             cprev = ret
-    #             if start == PIXY_CHECKSUM_SYNC:
-    #                 self.m_cs = True
-    #                 return PIXY_RESULT_OK
-    #             if start == PIXY_NO_CHECKSUM_SYNC:
-    #                 self.m_cs = True
-    #                 return PIXY_RESULT_OK
-    #         if i >= 4:
-    #             if attempts >= 4:
-    #                 return PIXY_RESULT_ERROR
-    #             # try:
-    #             #     pass
-    #             #     # TODO: sleep for 25 microseconds.
-    #             # except something about interrupted exception:
-    #             attempts += 1
-    #             i = 0
-    #         i += 1
 
 
 # The following little bit of code allows us to run the robot program.
