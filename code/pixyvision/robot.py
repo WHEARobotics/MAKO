@@ -12,10 +12,8 @@ class MAKORobot(wpilib.TimedRobot):
            In it, we should initialize the robot's shared variables and objects.
         """
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
-        self.pixy = pixy2api.pixy2.Pixy2(0)
-        # Packet stuff
-        self.type = 0
-        self.length = 0
+        self.pixy = pixy2api.pixy2.Pixy2(pixy2api.pixy2.Pixy2.LinkType.SPI, 0)
+        self.pixy.init() # Need to call init() to start communication with the Pixy2.
 
 
     def disabledInit(self):

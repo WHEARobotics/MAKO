@@ -29,8 +29,18 @@
 
 import enum, time
 import wpilib
+import pixy2api.links.spilink
 
-class Pixy2():
+# Next steps:
+# Implement Link and SPILink. Java version has two-stage initialization/open/close.  Python SPI/I2C/SerialPort have no close() method.
+#    We can simplify by just passing link type and link arg to the Pixy constructor.
+#    One good thing about Pixy2.init() is that it tries to connect to the link, and if timeout, returns an error code.
+#    But it might be better to just raise an execption and catch it in main code.  Examples don't use the errors.
+#    Or do all the object creation in Pixy2.__init__() (and the link __inits__), and then call Pixy2.init() to try to connect, read version.
+# Implement checksum verification.
+# Create the Version class.
+
+class Pixy2(object):
     PIXY_BUFFERSIZE = 0x104
     PIXY_SEND_HEADER_SIZE = 4
     PIXY_MAX_PROGNAME = 33
@@ -71,33 +81,52 @@ class Pixy2():
         I2C = 1
         UART = 2
 
-    def __init__(self, link):
-        """Constructs Pixy2 object wit supplied communication link."""
+    def __init__(self, link_type, link_sel = 0):
+        """Constructs Pixy2 object with link type and selection of which of that type.
+        :argument link_type one of variants of the LinkType enumeration.
+        :argument link_sel  An integer to select which SPI chip select, I2C port, or UART port to use.
+                            SPI: 0-3 for CS0-3 on the roboRIO's main SPI port, 4 for the roboRIO MXP connector.
+                            I2C: 0 (or anything else) for the on-board I2C, 1 for the MXP connector.
+                            UART: 0 for onboard, 1-3 for USB, 4 for MXP connector.
+        """
+        if link_type == Pixy2.LinkType.SPI:
+            self.link = pixy2api.links.spilink.SPILink(link_sel)
+        # elif link_type == Pixy2.LinkType.I2C:
+        #     self.link = links.I2CLink(link_arg)
+        # else:
+        #     # link_type == Pixy2.LinkType.UART
+        #     self.link = links.UARTLink(link_arg)
+
         # Stuff from my initial proof-of-concept code
-        self.spi = wpilib.SPI(wpilib.SPI.Port.kOnboardCS0)
+        #self.spi = wpilib.SPI(wpilib.SPI.Port.kOnboardCS0)
         self.response_buffer = bytearray(Pixy2.PIXY_BUFFERSIZE + Pixy2.PIXY_SEND_HEADER_SIZE)
 
         # Stuff from Java port
-        self.link = link
+#        self.link = link
         self.length = 0 # Object global that sets the length of data sent to Pixy2.
         self.type = 0   # Command type sent to Pixy2.
         # Initializes send/return buffer and payload buffer
 #        buffer = bytearray(PIXY_BUFFERSIZE + PIXY_SEND_HEADER_SIZE)
-#        buffer_payload = bytearray(PIXY_BUFFERSIZE)
+        self.payload_buffer = bytearray(Pixy2.PIXY_BUFFERSIZE)
         # Initializes tracker objects.
         # self.ccc = Pixy2CCC(self)
         # self.line = Pixy2Line(self)
         # self.video = Pixy2Video(self)
 
-    # def init(self, argument):
-    #     """Initializes Pixy2 and waits for startup to complete
-    #        @param argument Argument to setup {@link Link}"""
-    #     # Opens link
-    #     ret = self.link.open(argument)
-    #     if ret >= 0:
-    #         # Tries to connect, times out if unable to communicate after 5 seconds.
-    #         #for
-    #         pass
+    def init(self):
+        """Begins communication with Pixy2.  Call before doing any operations.
+        If successful, keeps track of the hardware/firmware version on the Pixy2.
+        :returns Pixy2 error code."""
+        timeout = wpilib.Timer()
+        timeout.start()
+        while (not timeout.hasElapsed(5)):
+            # Try for 5 seconds.
+            if (self.getVersion() >= 0):
+                #self.getResolution()
+                # TODO: implement getResolution()
+                return Pixy2.PIXY_RESULT_OK
+            time.sleep(0.000025) # 25 microcseconds
+        return Pixy2.PIXY_RESULT_ERROR
 
     def getVersion(self):
         """Get Pixy2 version and store in self.version; return error -- mashing everything together for a first attempt."""
@@ -105,18 +134,17 @@ class Pixy2():
         self.type = Pixy2.PIXY_TYPE_REQUEST_VERSION
         self.sendPacket()
         res = self.receivePacket()
-        # Diagnostics:
-        print(res, self.response_buffer)
+        if res == Pixy2.PIXY_RESULT_OK: # TODO: suggest that the constant be used in the Java version, rather than 0.
+            # Diagnostics:
+            print(res, self.response_buffer)
+            if self.type == Pixy2.PIXY_TYPE_RESPONSE_VERSION:
+                self.version = Pixy2.Version(self.response_buffer)
+                self.version.print()
+                return self.length  # Success
+            elif type == Pixy2.PIXY_TYPE_RESPONSE_ERROR:
+                return Pixy2.PIXY_RESULT_BUSY
+        return Pixy2.PIXY_RESULT_ERROR # Some kind of bitstream error
 
-        # TODO: create the Version class and use this code below.
-    #     if self.receivePacket() == Pixy2.PIXY_RESULT_OK: # TODO: suggest that the constant be used in the Java version, rather than 0.
-    #         if self.type == PIXY_TYPE_RESPONSE_VERSION:
-    #             self.version # new Version(buffer)
-    #             return self.length  # Success
-    #         elif type == PIXY_TYPE_RESPONSE_ERROR:
-    #             return PIXY_RESULT_BUSY
-    #     return PIXY_RESULT_ERROR # Some kind of bitstream error
-    #
 
     def getSync(self):
         """Looks for Pixy2 communication synchronization bytes to find the start of message.
@@ -128,9 +156,7 @@ class Pixy2():
         cprev = 0
         i = 0
         while(True):
-            # Java code, TODO: use spilinklreceive
-            #res = self.receive(c, 1, 0)
-            res = self.spi.read(False, c)
+            res = self.link.receive(c)
             if res >= Pixy2.PIXY_RESULT_OK:
                 ret = c[0] & 0xFF
                 # Since we're using little endian, previous byte is least significant byte.
@@ -147,25 +173,20 @@ class Pixy2():
             if i >= 4:
                 if attempts >= 4:
                     return Pixy2.PIXY_RESULT_ERROR
-                time.sleep(0.000025)
-                # try:
-                #     pass
-                #     # TODO: sleep for 25 microseconds.
-                # except something about interrupted exception:
+                time.sleep(0.000025) # Sleep for 25 microseconds.
                 attempts += 1
                 i = 0
             i += 1
 
     def sendPacket(self):
         """Sends packet to Pixy2.  Need to set self.type and self.length beforehand, as well as putting data in self.payload_buffer."""
-        write_buffer = bytearray(Pixy2.PIXY_SEND_HEADER_SIZE + self.length) # For Python functions, need to set the buffer the length of the data.
+        write_buffer = bytearray(Pixy2.PIXY_SEND_HEADER_SIZE + self.length) # For Python functions (vs. Java), need to set the buffer the length of the data.
         write_buffer[0] = (Pixy2.PIXY_NO_CHECKSUM_SYNC & 0xff)
         write_buffer[1] = ((Pixy2.PIXY_NO_CHECKSUM_SYNC >> 8) & 0xff)
         write_buffer[2] = self.type
         write_buffer[3] = self.length
-        # TODO: need to copy in the self.payload_buffer.
-        self.spi.write(write_buffer)  # This method writes out all the bytes in the buffer.
-        # TODO: for port, need to use the link, and return either bytes sent or error
+        write_buffer[4:] = self.payload_buffer[0:self.length] # TODO: need to copy in the self.payload_buffer.
+        return self.link.send(write_buffer)
 
     def receivePacket(self):
         """Receives a packet from Pixy2 and puts it in the object global response_buffer for further processing."""
@@ -176,57 +197,46 @@ class Pixy2():
             # Checksum sync
             cs_calc = Pixy2.Checksum()
             buf = bytearray(4) # Checksum packets have 4 bytes.
-            # This reads in the length of self.buffer, with "True" initiating a transfer.
-            self.spi.read(True, buf) # TODO: shift to using link
-            # res = self.receive(self.buffer, 4, 0)
+            # This reads in the length of the buffer.
+            res = self.link.receive(buf)
+            print(buf)
             if res < 0:
                 return res
             self.type = buf[0] & 0xFF
             self.length = buf[1] & 0xFF
             csSerial = ((buf[3] & 0xFF) << 8) | (buf[2] & 0xFF)
             buf = bytearray(self.length)
-            res = self.spi.read(True, buf)  # TODO: shift to using link and checking the checksum.
-            # res = self.receive(self.buffer, self.length, cs_calc)
+            res = self.link.receive(buf, cs_calc)
             if res < 0:
                 return res
-            # TODO: add the checksum verification from Java.
+            if csSerial != cs_calc.get():
+#                print('Checksum calc failed.')
+                return Pixy2.PIXY_RESULT_CHECKSUM_ERROR
         else:
             # Not a checksum sync.
             buf = bytearray(2) # Non-Checksum packet headers have only 2 bytes.
-            self.spi.read(True, buf) # TODO: shift to using link
-            #res = self.receive(self.buffer, 4, 0)
+            res = self.link.receive(buf)
+            print(buf)
             if res < 0:
                 return res
             self.type = buf[0] & 0xFF
             self.length = buf[1] & 0xFF
             buf = bytearray(self.length)
-            res = self.spi.read(True, buf)  # TODO: shift to using link.
+            res = self.link.receive(buf)
             if res < 0:
                 return res
         # If execution has reached here, there have been no errors to cause early return.
         self.response_buffer[0:self.length] = buf[:] # Put the response into the buffer.
         return Pixy2.PIXY_RESULT_OK
 
-    #
-    # # TODO: This method belongs in SPILink.py
-    # def receive(self, buf, length_rec, checksum):
-    #     if self.cs != 0:
-    #         self.resetChecksum()
-    #     self.spi.read(False, buf, length_rec)
-    #     for val in range(length_rec):
-    #         csb = buf[i] & 0xFF
-    #         self.updateChecksum(csb)
-    #     return length_rec
-    #
-
-    class Checksum():
+    class Checksum(object):
         """Class to hold checksums."""
 
         def __init__(self):
             self.cs = 0
 
         def update(self, b):
-            """Add a byte to the checksum."""
+            """Add a byte to the checksum.  Call this with each byte in the response in sequence."""
             self.cs += b
 
         def get(self):
@@ -235,3 +245,47 @@ class Pixy2():
         def reset(self):
             self.cs = 0
 
+    class Version(object):
+        """Class to parse and hold Pixy2 version info."""
+        def __init__(self, version_buffer):
+            """Creates version object.
+            :param version_buffer - bytearray of version info returned from Pixy2."""
+            self.hardware = ((version_buffer[1] & 0xFF) << 8) | (version_buffer[0] & 0xFF)
+            self.firmware_major = version_buffer[2]
+            self.firmware_minor = version_buffer[3]
+            self.firmware_build = ((version_buffer[5] & 0xFF) << 8) | (version_buffer[4] & 0xFF)
+            self.firmware_type = version_buffer[6:16].decode() # decode() decodes the bytes into a Unicode string, default encoding is utf-8.
+
+        def print(self):
+            """Print version info to the console."""
+            print(self.to_string())
+
+        def to_string(self):
+            """Create a string from the version info.
+            :returns the string"""
+            return 'hardwar ver: 0x{} firmware ver: {}.{}.{} {}'.format(self.hardware, self.firmware_major, self.firmware_minor, self.firmware_build, self.firmware_type)
+
+        def get_hardware(self):
+            """Get hardware info.
+            :returns hardware version as an integer."""
+            return self.hardware
+
+        def get_firmware_major(self):
+            """Get firmware info.
+            :returns firmware major version as an integer."""
+            return self.firmware_major
+
+        def get_firmware_minor(self):
+            """Get firmware info.
+            :returns firmware minor version as an integer."""
+            return self.firmware_minor
+
+        def get_firmware_build(self):
+            """Get firmware info.
+            :returns firmware build number as an integer."""
+            return self.firmware_build
+
+        def get_firmware_type_string(self):
+            """Get firmware type info.
+            :returns firmware type as a string."""
+            return self.firmware_type
