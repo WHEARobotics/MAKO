@@ -32,13 +32,10 @@ import wpilib
 import pixy2api.links.spilink
 
 # Next steps:
-# Implement Link and SPILink. Java version has two-stage initialization/open/close.  Python SPI/I2C/SerialPort have no close() method.
-#    We can simplify by just passing link type and link arg to the Pixy constructor.
-#    One good thing about Pixy2.init() is that it tries to connect to the link, and if timeout, returns an error code.
-#    But it might be better to just raise an execption and catch it in main code.  Examples don't use the errors.
-#    Or do all the object creation in Pixy2.__init__() (and the link __inits__), and then call Pixy2.init() to try to connect, read version.
-# Implement checksum verification.
-# Create the Version class.
+# Finish the setLED() method.
+# Implement camera brightness.
+# Implement color connected components and the "changeProg" method.
+# Other stuff: servos; I2C and UART links
 
 class Pixy2(object):
     PIXY_BUFFERSIZE = 0x104
@@ -105,6 +102,9 @@ class Pixy2(object):
 #        self.link = link
         self.length = 0 # Object global that sets the length of data sent to Pixy2.
         self.type = 0   # Command type sent to Pixy2.
+        self.frame_height = 0
+        self.frame_width = 0
+        self.version = None  # Start with an empty version.
         # Initializes send/return buffer and payload buffer
 #        buffer = bytearray(PIXY_BUFFERSIZE + PIXY_SEND_HEADER_SIZE)
         self.payload_buffer = bytearray(Pixy2.PIXY_BUFFERSIZE)
@@ -119,20 +119,24 @@ class Pixy2(object):
     def init(self):
         """Begins communication with Pixy2.  Call before doing any operations.
         If successful, keeps track of the hardware/firmware version on the Pixy2.
-        :returns Pixy2 error code."""
+        :returns Pixy2 error code.
+        """
         timeout = wpilib.Timer()
         timeout.start()
         while (not timeout.hasElapsed(5)):
             # Try for 5 seconds.
             if (self.getVersion() >= 0):
-                #self.getResolution()
+                self.getResolution()
+                print('resolution: {} x {}'.format(self.frame_width, self.frame_height))
                 # TODO: implement getResolution()
                 return Pixy2.PIXY_RESULT_OK
             time.sleep(0.000025) # 25 microcseconds
         return Pixy2.PIXY_RESULT_ERROR
 
     def getVersion(self):
-        """Get Pixy2 version and store in self.version; return error -- mashing everything together for a first attempt."""
+        """Get Pixy2 version and store in self.version; return error -- mashing everything together for a first attempt.
+        :returns PIXY result/error code.
+        """
         self.length = 0
         self.type = Pixy2.PIXY_TYPE_REQUEST_VERSION
         self.sendPacket()
@@ -148,6 +152,156 @@ class Pixy2(object):
                 return Pixy2.PIXY_RESULT_BUSY
         return Pixy2.PIXY_RESULT_ERROR # Some kind of bitstream error
 
+    def getVersionInfo(self):
+        """Gets stored Pixy2 Version info, or retrieves it if not present.
+        :returns - a Pixy2.Version object"""
+
+    def getResolution(self):
+        """Get the camera resolution from the Pixy2 and store it in object variables.
+        :returns PIXY result/error code.
+        """
+        self.length = 1
+        self.payload_buffer[0] = 0 # Adds empty byte to payload as placeholder for future queries.
+        self.type = Pixy2.PIXY_TYPE_REQUEST_RESOLUTION
+        self.sendPacket()
+        res = self.receivePacket()
+        if res == Pixy2.PIXY_RESULT_OK: # TODO: suggest that the constant be used in the Java version, rather than 0.
+            if self.type == Pixy2.PIXY_TYPE_RESPONSE_RESOLUTION:
+                self.frame_width = ((self.response_buffer[1] & 0xFF) << 8) | (self.response_buffer[0] & 0xFF)
+                self.frame_height = ((self.response_buffer[3] & 0xFF) << 8) | (self.response_buffer[2] & 0xFF)
+                return Pixy2.PIXY_RESULT_OK
+            else:
+                return Pixy2.PIXY_RESULT_ERROR
+        else:
+            return Pixy2.PIXY_RESULT_ERROR
+
+    def getFrameWidth(self):
+        """Get the width of the Pixy's visual frame after initialization.
+        prerequisite - must have called init().
+        """
+        return self.frame_width
+
+    def getFrameHeight(self):
+        """Get the height of the Pixy's visual frame after initialization.
+        prerequisite - must have called init().
+        """
+        return self.frame_height
+
+    # TODO: need to implement these classes so we can have them to return.
+    def getCCC(self):
+        """Get Pixy2 Color Connected Components tracker."""
+        return self.ccc
+
+    def getLine(self):
+        """Get Pixy2 line tracker."""
+        return self.line
+
+    def getVideo(self):
+        """Get Pixy2 video tracker."""
+        return self.video
+
+    def changeProg(self, prog):
+        """Sends change program packet to Pixy2."""
+        # TODO: implement this method.
+        pass
+
+    def setCameraBrightness(self, brightness):
+        """Sets Pixy2 camera brightness between 0-255.
+        :param brightness - integer 0-255 representing camera brightness.
+        :returns Pixy2 error code.
+        """
+        # TODO: implement
+        pass
+
+    def setServos(self, pan, tilt):
+        """Sets Pixy2 servo positions between 0-1000.
+        :param pan  - integer 0-1000 for pan servo position.
+        :param tilt - integer 0-1000 for tilt servo position.
+        :returns Pixy2 error code.
+        """
+        # TODO: implement
+        pass
+
+    # TODO: diagnose individual colors.  Here is what I see:
+    # red 128 (128,0,0) -> green
+    # green 128 (0,128,0) -> blue
+    # green 64 (0,64,0) -> magenta???
+    # blue 128 (0,0,128)-> yellow
+    # sometimes... it seems inconsistent.
+    # TODO: implement color and rgb integer params, also improve docstring.
+
+    def setLED(self, color=None, rgb=None, red=None, green=None, blue=None):
+        """Set the LED to a specified color, using one of three parameter types."""
+        r = self.clip_unsigned_byte(red)
+        g = self.clip_unsigned_byte(green)
+        b = self.clip_unsigned_byte(blue)
+        self.payload_buffer[0] = r
+        self.payload_buffer[1] = g
+        self.payload_buffer[2] = b
+        self.length = 3 # Three bytes to send.
+        self.type = Pixy2.PIXY_TYPE_REQUEST_LED
+        self.sendPacket()
+        res = self.receivePacket()
+        # TODO: suggest that the constant be used in the Java version, rather than 0 in the "if" below.
+        if res == Pixy2.PIXY_RESULT_OK and self.type == Pixy2.PIXY_TYPE_RESPONSE_RESULT and self.length == 4:
+            res = ((self.response_buffer[3] & 0xFF) << 24) | ((self.response_buffer[2] & 0xFF) << 16) \
+                  | ((self.response_buffer[1] & 0xFF) << 8) | (self.response_buffer[0] & 0xFF)
+            return res
+        else:
+            return Pixy2.PIXY_RESULT_ERROR
+
+    def clip_unsigned_byte(self, input):
+        """Limits the input integer to the range of an unsigned byte (0-255).
+        :param input - integer (or if a float, coerced to an integer).
+        :returns the value clipped to the range 0-255.
+        """
+        retval = int(input)
+        if retval > 255:
+            retval = 255
+        elif retval < 0:
+            retval = 0
+        return retval
+
+    def setLamp(self, white_on, rgb_on):
+        """Turn Pixy2 light sources on or off.
+        :param white_on - for the white light source: 1 for on, 0 for off.
+        :param rgb_on   - for the RGB color LED: 1 for on, 0 for off.
+        :returns positive integer for success, or Pixy2 error code.
+        """
+        self.length = 2
+        self.payload_buffer[0] = white_on & 0xFF
+        self.payload_buffer[1] = rgb_on & 0xFF
+        self.type = Pixy2.PIXY_TYPE_REQUEST_LAMP
+        self.sendPacket()
+        res = self.receivePacket()
+        # TODO: suggest that the constant be used in the Java version, rather than 0 in the "if" below.
+        if res == Pixy2.PIXY_RESULT_OK and self.type == Pixy2.PIXY_TYPE_RESPONSE_RESULT and self.length == 4:
+            res = ((self.response_buffer[3] & 0xFF) << 24) | ((self.response_buffer[2] & 0xFF) << 16) \
+                  | ((self.response_buffer[1] & 0xFF) << 8) | (self.response_buffer[0] & 0xFF)
+            return res
+        else:
+            return Pixy2.PIXY_RESULT_ERROR
+
+    def getFPS(self):
+        """Gets Pixy2 camera framerate between 2-62 fps.
+        :returns framerate or Pixy2 error code.
+        """
+        self.length = 0 # No arguments.
+        self.type = Pixy2.PIXY_TYPE_REQUEST_FPS
+        self.sendPacket()
+        res = self.receivePacket()
+        # TODO: suggest that the constant be used in the Java version, rather than 0 in the "if" below.
+        if res == Pixy2.PIXY_RESULT_OK and self.type == Pixy2.PIXY_TYPE_RESPONSE_RESULT and self.length == 4:
+            res = ((self.response_buffer[3] & 0xFF) << 24) | ((self.response_buffer[2] & 0xFF) << 16) \
+                  | ((self.response_buffer[1] & 0xFF) << 8) | (self.response_buffer[0] & 0xFF)
+            return res
+        else:
+            return Pixy2.PIXY_RESULT_ERROR
+
+
+    #--------------------------------------------------------------------------------------
+    # Methods that are not intended as part of the public interface.
+    # I have kept the Java names for consistency, rather than prefix the names with "_".
 
     def getSync(self):
         """Looks for Pixy2 communication synchronization bytes to find the start of message.
@@ -202,7 +356,7 @@ class Pixy2(object):
             buf = bytearray(4) # Checksum packets have 4 bytes.
             # This reads in the length of the buffer.
             res = self.link.receive(buf)
-            print(buf)
+#            print(buf)
             if res < 0:
                 return res
             self.type = buf[0] & 0xFF
@@ -219,7 +373,7 @@ class Pixy2(object):
             # Not a checksum sync.
             buf = bytearray(2) # Non-Checksum packet headers have only 2 bytes.
             res = self.link.receive(buf)
-            print(buf)
+#            print(buf)
             if res < 0:
                 return res
             self.type = buf[0] & 0xFF

@@ -14,7 +14,11 @@ class MAKORobot(wpilib.TimedRobot):
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
         self.pixy = pixy2api.pixy2.Pixy2(pixy2api.pixy2.Pixy2.LinkType.SPI, 0)
         self.pixy.init() # Need to call init() to start communication with the Pixy2.
-
+        print('FPS: {}'.format(self.pixy.getFPS()))
+        #print('lamp white: {}'.format(self.pixy.setLamp(1,0)))
+        print('led rgb: {}'.format(self.pixy.setLED(red=255,green=255,blue=255)))
+        print('lamp on rgb: {}'.format(self.pixy.setLamp(0,1)))
+        self.led = 0
 
     def disabledInit(self):
         """This function gets called once when the robot is disabled.
@@ -53,9 +57,13 @@ class MAKORobot(wpilib.TimedRobot):
             # Note the string format: the part in {} gets replaced by the value of the variable
             # user_value, and is formatted as a floating point (the "f"), with 4 digits and 2 digits
             # after the decimal place. https://docs.python.org/3/library/string.html#formatstrings
-            self.logger.info('Another value is {:4.2f}'.format(0.33))
-            self.pixy.getVersion()
-
+            #self.logger.info('Another value is {:4.2f}'.format(0.33))
+            #self.pixy.getVersion()
+            print(self.led)
+            self.pixy.setLED(red=0, green=0, blue=self.led)
+            self.led += 16
+            if self.led > 255:
+                self.led = 0
 
 
 # The following little bit of code allows us to run the robot program.
