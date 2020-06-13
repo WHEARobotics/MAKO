@@ -113,6 +113,9 @@ class Pixy2(object):
         # self.line = Pixy2Line(self)
         # self.video = Pixy2Video(self)
 
+    #--------------------------------------------------------------------------------------
+    # Methods that are part of the public interface.
+
     def init(self):
         """Begins communication with Pixy2.  Call before doing any operations.
         If successful, keeps track of the hardware/firmware version on the Pixy2.
@@ -229,6 +232,61 @@ class Pixy2(object):
         self.response_buffer[0:self.length] = buf[:] # Put the response into the buffer.
         return Pixy2.PIXY_RESULT_OK
 
+    #--------------------------------------------------------------------------------------
+    # Inner classes that are part of the public interface.
+    # I have kept the Java names for consistency.
+
+    class Version(object):
+        """Class to parse and hold Pixy2 version info."""
+        def __init__(self, version_buffer):
+            """Creates version object.
+            :param version_buffer - bytearray of version info returned from Pixy2."""
+            self.hardware = ((version_buffer[1] & 0xFF) << 8) | (version_buffer[0] & 0xFF)
+            self.firmware_major = version_buffer[2]
+            self.firmware_minor = version_buffer[3]
+            self.firmware_build = ((version_buffer[5] & 0xFF) << 8) | (version_buffer[4] & 0xFF)
+            self.firmware_type = version_buffer[6:16].decode() # decode() decodes the bytes into a Unicode string, default encoding is utf-8.
+
+        def print(self):
+            """Print version info to the console."""
+            print(self.toString())
+
+        def toString(self):
+            """Create a string from the version info.
+            :returns the string"""
+            return 'hardware ver: 0x{} firmware ver: {}.{}.{} {}'.format(self.hardware, self.firmware_major, self.firmware_minor, self.firmware_build, self.firmware_type)
+
+        def getHardware(self):
+            """Get hardware info.
+            :returns hardware version as an integer."""
+            return self.hardware
+
+        def getFirmwareMajor(self):
+            """Get firmware info.
+            :returns firmware major version as an integer."""
+            return self.firmware_major
+
+        def getFirmwareMinor(self):
+            """Get firmware info.
+            :returns firmware minor version as an integer."""
+            return self.firmware_minor
+
+        def getFirmwareBuild(self):
+            """Get firmware info.
+            :returns firmware build number as an integer."""
+            return self.firmware_build
+
+        def getFirmwareTypeString(self):
+            """Get firmware type info.
+            :returns firmware type as a string."""
+            return self.firmware_type
+
+    #--------------------------------------------------------------------------------------
+    # Inner classes that are not intended as part of the public interface.
+    # I have kept the Java names for consistency, rather than prefix the names with "_".
+    # However, I have changed the classes' method names to either simpler or more Pythonic (snake_case)
+    # names since they are not intended to be public.
+
     class Checksum(object):
         """Class to hold checksums."""
 
@@ -245,47 +303,3 @@ class Pixy2(object):
         def reset(self):
             self.cs = 0
 
-    class Version(object):
-        """Class to parse and hold Pixy2 version info."""
-        def __init__(self, version_buffer):
-            """Creates version object.
-            :param version_buffer - bytearray of version info returned from Pixy2."""
-            self.hardware = ((version_buffer[1] & 0xFF) << 8) | (version_buffer[0] & 0xFF)
-            self.firmware_major = version_buffer[2]
-            self.firmware_minor = version_buffer[3]
-            self.firmware_build = ((version_buffer[5] & 0xFF) << 8) | (version_buffer[4] & 0xFF)
-            self.firmware_type = version_buffer[6:16].decode() # decode() decodes the bytes into a Unicode string, default encoding is utf-8.
-
-        def print(self):
-            """Print version info to the console."""
-            print(self.to_string())
-
-        def to_string(self):
-            """Create a string from the version info.
-            :returns the string"""
-            return 'hardwar ver: 0x{} firmware ver: {}.{}.{} {}'.format(self.hardware, self.firmware_major, self.firmware_minor, self.firmware_build, self.firmware_type)
-
-        def get_hardware(self):
-            """Get hardware info.
-            :returns hardware version as an integer."""
-            return self.hardware
-
-        def get_firmware_major(self):
-            """Get firmware info.
-            :returns firmware major version as an integer."""
-            return self.firmware_major
-
-        def get_firmware_minor(self):
-            """Get firmware info.
-            :returns firmware minor version as an integer."""
-            return self.firmware_minor
-
-        def get_firmware_build(self):
-            """Get firmware info.
-            :returns firmware build number as an integer."""
-            return self.firmware_build
-
-        def get_firmware_type_string(self):
-            """Get firmware type info.
-            :returns firmware type as a string."""
-            return self.firmware_type
