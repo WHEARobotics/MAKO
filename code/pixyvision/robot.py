@@ -25,6 +25,7 @@ class MAKORobot(wpilib.TimedRobot):
            In the past, we have not used this function, but it could occasionally
            be useful.  In this case, we reset some SmartDashboard values.
         """
+        pass
 
     def disabledPeriodic(self):
         """Another function we have not used in the past.  Adding for completeness."""

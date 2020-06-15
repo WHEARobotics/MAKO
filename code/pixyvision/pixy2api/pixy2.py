@@ -32,7 +32,6 @@ import wpilib
 import pixy2api.links.spilink
 
 # Next steps:
-# Finish the setLED() method.
 # Implement camera brightness.
 # Implement color connected components and the "changeProg" method.
 # Other stuff: servos; I2C and UART links
@@ -210,8 +209,19 @@ class Pixy2(object):
         :param brightness - integer 0-255 representing camera brightness.
         :returns Pixy2 error code.
         """
-        # TODO: implement
-        pass
+        # Set up the data for the call to Pixy2.
+        self.payload_buffer[0] = self.clip_unsigned_byte(int(brightness))
+        self.length = 1 # One byte to send.
+        self.type = Pixy2.PIXY_TYPE_REQUEST_BRIGHTNESS
+        self.sendPacket()
+        res = self.receivePacket()
+        # TODO: suggest that the constant be used in the Java version, rather than 0 in the "if" below.
+        if res == Pixy2.PIXY_RESULT_OK and self.type == Pixy2.PIXY_TYPE_RESPONSE_RESULT and self.length == 4:
+            res = ((self.response_buffer[3] & 0xFF) << 24) | ((self.response_buffer[2] & 0xFF) << 16) \
+                  | ((self.response_buffer[1] & 0xFF) << 8) | (self.response_buffer[0] & 0xFF)
+            return res
+        else:
+            return Pixy2.PIXY_RESULT_ERROR
 
     def setServos(self, pan, tilt):
         """Sets Pixy2 servo positions between 0-1000.
