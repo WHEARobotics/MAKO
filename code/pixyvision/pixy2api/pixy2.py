@@ -29,12 +29,17 @@
 
 import enum, time
 import wpilib
+import pixy2api.pixy2ccc
 import pixy2api.links.spilink
 
 # Next steps:
-# Implement camera brightness.
-# Implement color connected components and the "changeProg" method.
+# Test color connected components with more than one object.
+# Implement & test the line following class.
+# Implement the "changeProg" method so we can start the line follower.
+# Implement & test the video class to get the color at an individual pixel.
 # Other stuff: servos; I2C and UART links
+# Test camera brightness.
+
 
 class Pixy2(object):
     PIXY_BUFFERSIZE = 0x104
@@ -84,6 +89,7 @@ class Pixy2(object):
                             SPI: 0-3 for CS0-3 on the roboRIO's main SPI port, 4 for the roboRIO MXP connector.
                             I2C: 0 (or anything else) for the on-board I2C, 1 for the MXP connector.
                             UART: 0 for onboard, 1-3 for USB, 4 for MXP connector.
+        Call init() after creation and before anything else to start communication with Pixy2.
         """
         if link_type == Pixy2.LinkType.SPI:
             self.link = pixy2api.links.spilink.SPILink(link_sel)
@@ -93,22 +99,16 @@ class Pixy2(object):
         #     # link_type == Pixy2.LinkType.UART
         #     self.link = links.UARTLink(link_arg)
 
-        # Stuff from my initial proof-of-concept code
-        #self.spi = wpilib.SPI(wpilib.SPI.Port.kOnboardCS0)
-        self.response_buffer = bytearray(Pixy2.PIXY_BUFFERSIZE + Pixy2.PIXY_SEND_HEADER_SIZE)
-
-        # Stuff from Java port
-#        self.link = link
         self.length = 0 # Object global that sets the length of data sent to Pixy2.
         self.type = 0   # Command type sent to Pixy2.
         self.frame_height = 0
         self.frame_width = 0
         self.version = None  # Start with an empty version.
         # Initializes send/return buffer and payload buffer
-#        buffer = bytearray(PIXY_BUFFERSIZE + PIXY_SEND_HEADER_SIZE)
+        self.response_buffer = bytearray(Pixy2.PIXY_BUFFERSIZE + Pixy2.PIXY_SEND_HEADER_SIZE)
         self.payload_buffer = bytearray(Pixy2.PIXY_BUFFERSIZE)
         # Initializes tracker objects.
-        # self.ccc = Pixy2CCC(self)
+        self.ccc = pixy2api.pixy2ccc.Pixy2CCC(self)
         # self.line = Pixy2Line(self)
         # self.video = Pixy2Video(self)
 
@@ -127,7 +127,6 @@ class Pixy2(object):
             if (self.getVersion() >= 0):
                 self.getResolution()
                 print('resolution: {} x {}'.format(self.frame_width, self.frame_height))
-                # TODO: implement getResolution()
                 return Pixy2.PIXY_RESULT_OK
             time.sleep(0.000025) # 25 microcseconds
         return Pixy2.PIXY_RESULT_ERROR
@@ -142,7 +141,7 @@ class Pixy2(object):
         res = self.receivePacket()
         if res == Pixy2.PIXY_RESULT_OK: # TODO: suggest that the constant be used in the Java version, rather than 0.
             # Diagnostics:
-            print(res, self.response_buffer)
+            # print(res, self.response_buffer)
             if self.type == Pixy2.PIXY_TYPE_RESPONSE_VERSION:
                 self.version = Pixy2.Version(self.response_buffer)
                 self.version.print()
@@ -186,11 +185,11 @@ class Pixy2(object):
         """
         return self.frame_height
 
-    # TODO: need to implement these classes so we can have them to return.
     def getCCC(self):
         """Get Pixy2 Color Connected Components tracker."""
         return self.ccc
 
+    # TODO: need to implement these classes so we can have them to return.
     def getLine(self):
         """Get Pixy2 line tracker."""
         return self.line
@@ -200,7 +199,11 @@ class Pixy2(object):
         return self.video
 
     def changeProg(self, prog):
-        """Sends change program packet to Pixy2."""
+        """Sends change program packet to Pixy2.
+        From the Pixy wiki: https://docs.pixycam.com/wiki/doku.php?id=wiki:v2:ccc_api#member-functions
+        "Firmware versions 3.0.11 and greater will automatically switch to the color_connected_components program when making requests through the color connected components API."
+        Therefore, I haven't implemented this function yet.
+        """
         # TODO: implement this method.
         pass
 
@@ -374,7 +377,7 @@ class Pixy2(object):
         write_buffer[1] = ((Pixy2.PIXY_NO_CHECKSUM_SYNC >> 8) & 0xff)
         write_buffer[2] = self.type
         write_buffer[3] = self.length
-        write_buffer[4:] = self.payload_buffer[0:self.length] # TODO: need to copy in the self.payload_buffer.
+        write_buffer[4:] = self.payload_buffer[0:self.length] # Copy in the self.payload_buffer.
         return self.link.send(write_buffer)
 
     def receivePacket(self):
