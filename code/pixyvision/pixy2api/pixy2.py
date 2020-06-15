@@ -222,19 +222,41 @@ class Pixy2(object):
         # TODO: implement
         pass
 
-    # TODO: diagnose individual colors.  Here is what I see:
-    # red 128 (128,0,0) -> green
+    # TODO: I initially saw some odd behavior.  Now not reproducing it. Here is what I saw:
+    # red 128 (128,0,0) -> LED was green
     # green 128 (0,128,0) -> blue
     # green 64 (0,64,0) -> magenta???
     # blue 128 (0,0,128)-> yellow
     # sometimes... it seems inconsistent.
-    # TODO: implement color and rgb integer params, also improve docstring.
 
-    def setLED(self, color=None, rgb=None, red=None, green=None, blue=None):
-        """Set the LED to a specified color, using one of three parameter types."""
-        r = self.clip_unsigned_byte(red)
-        g = self.clip_unsigned_byte(green)
-        b = self.clip_unsigned_byte(blue)
+    def setLED(self, color=None, rgb=None, red=255, green=255, blue=255):
+        """Set the LED to a specified color, using one of three parameter types.  Choose between
+        :param color - a wpilib.Color object with fields red, green, blue.  If more than one set of
+                       optional parameters are supplied, this one is prioritized.  Note that Color
+                       objects use floats in the range 0-1 to represent the red, green, and blue values.
+        :param rgb   - a 24-bit (or more, but the rest will be ignored) unsigned integer, where the
+                       the least significant byte is blue, the next is green, and the highest is red.
+        :param red
+        :param green
+        :param blue - This set must be supplied together, or the default will be used 0-255 for each.
+        :returns Pixy2 error code.
+        """
+        # Choose which color type to use.
+        if color is not None:
+            r = self.clip_unsigned_byte(int(color.red * 256))
+            g = self.clip_unsigned_byte(int(color.green * 256))
+            b = self.clip_unsigned_byte(int(color.blue * 256))
+        elif rgb is not None:
+            r = (rgb >> 16) & 0xFF
+            g = (rgb >> 8) & 0xFF
+            b = rgb & 0xFF
+        else:
+            # Since default values are defined, there should always be something to use.
+            r = self.clip_unsigned_byte(red)
+            g = self.clip_unsigned_byte(green)
+            b = self.clip_unsigned_byte(blue)
+
+        # Set up the data for the call to Pixy2.
         self.payload_buffer[0] = r
         self.payload_buffer[1] = g
         self.payload_buffer[2] = b
