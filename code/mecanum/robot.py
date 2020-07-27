@@ -4,6 +4,7 @@
 """
 
 import wpilib
+import wpilib.drive
 import rev
 
 class MAKORobot(wpilib.TimedRobot):
@@ -30,14 +31,25 @@ class MAKORobot(wpilib.TimedRobot):
         self.joystick = wpilib.Joystick(1)
 
         # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
-        self.motor_right_rear = rev.CANSparkMax(1, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.motor_right_front = rev.CANSparkMax(3, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.motor_left_rear = rev.CANSparkMax(2, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.motor_left_front = rev.CANSparkMax(4, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.motor_right_rear.setInverted(False)
-        self.motor_right_front.setInverted(False)
-        self.motor_left_rear.setInverted(False)
-        self.motor_left_front.setInverted(False)
+        self.drive_rr = rev.CANSparkMax(1, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
+        self.drive_rf = rev.CANSparkMax(3, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
+        self.drive_lr = rev.CANSparkMax(2, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
+        self.drive_lf = rev.CANSparkMax(4, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
+        self.drive_rr.setInverted(False)
+        self.drive_rf.setInverted(False)
+        self.drive_lr.setInverted(False)
+        self.drive_lf.setInverted(False)
+        # Set all motors to coast mode when idle/neutral.
+        # Note that this is "IdleMode" rather than the "NeutralMode" nomenclature used by CTRE CANTalons.
+        self.drive_rr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_rf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_lr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_lf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
+
+        # Now that we have motors, we can set up an object that will handle mecanum drive.
+        # From the documentation, North, East, and Down are the three axes.
+        # Positive X is forward, Positive Y is right, Positive Z is down.  Clockwise rotation around Z (as viewed from ___) is positive.
+        self.drivetrain = wpilib.drive.MecanumDrive(self.drive_lf, self.drive_lr, self.drive_rf, self.drive_rr)
 
     def disabledInit(self):
         """This function gets called once when the robot is disabled.
@@ -67,10 +79,14 @@ class MAKORobot(wpilib.TimedRobot):
 
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
-        self.motor_right_rear.set(self.joystick.getY()/4)
-        self.motor_right_front.set(self.joystick.getY()/4)
-        self.motor_left_rear.set(self.joystick.getY()/4)
-        self.motor_left_front.set(self.joystick.getY()/4)
+
+        # Drive using the joystick inputs for y, x, z, and gyro angle. (note the weird order of x and y)
+        # +Y is right, and that is +X on the joystick.
+        # +X is forward, but that is -Y to the joystick.
+        # +Z is clockwise, and that is the same on the joystick.
+        # gyro angle = 0.0 to drive from the point of view of someone on the robot.
+        # gyro angle using the gyro to drive from a fixed observer's point of view.
+        self.drivetrain.driveCartesian(self.joystick.getX() / 4, -self.joystick.getY() / 4, self.joystick.getZ() / 4, 0.0)
 
         # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 1.0 seconds.
