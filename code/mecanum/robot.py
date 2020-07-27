@@ -76,6 +76,7 @@ class MAKORobot(wpilib.TimedRobot):
     def teleopInit(self):
         """This function is run once each time the robot enters teleop mode."""
         self.print_timer.start() # Now it starts counting.
+        self.gyro.reset() # Also reset the gyro angle.  This means you should always start in a known orientation.
 
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
@@ -86,7 +87,7 @@ class MAKORobot(wpilib.TimedRobot):
         # +Z is clockwise, and that is the same on the joystick.
         # gyro angle = 0.0 to drive from the point of view of someone on the robot.
         # gyro angle using the gyro to drive from a fixed observer's point of view.
-        self.drivetrain.driveCartesian(self.joystick.getX() / 4, -self.joystick.getY() / 4, self.joystick.getZ() / 4, 0.0)
+        self.drivetrain.driveCartesian(self.joystick.getX() / 4, -self.joystick.getY() / 4, self.joystick.getZ() / 4, -self.gyro.getAngle())
 
         # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 1.0 seconds.
@@ -97,7 +98,7 @@ class MAKORobot(wpilib.TimedRobot):
             wpilib.SmartDashboard.putString('DB/String 0', 'x:   {:5.3f}'.format(self.joystick.getX()))
             wpilib.SmartDashboard.putString('DB/String 1', 'y: {:5.3f}'.format(self.joystick.getY()))
             wpilib.SmartDashboard.putString('DB/String 2', 'z:  {:5.3f}'.format(self.joystick.getZ()))
-            wpilib.SmartDashboard.putString('DB/String 3', 'throttle: {}'.format(self.joystick.getThrottle()))
+            wpilib.SmartDashboard.putString('DB/String 3', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
             # wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
             # wpilib.SmartDashboard.putBoolean('DB/LED 0', password) # Light the virtual LED if the password has been entered properly.
             # wpilib.SmartDashboard.putString('DB/String 5', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
