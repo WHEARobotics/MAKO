@@ -87,6 +87,8 @@ class Pixy2(object):
         :argument link_type one of variants of the LinkType enumeration.
         :argument link_sel  An integer to select which SPI chip select, I2C port, or UART port to use.
                             SPI: 0-3 for CS0-3 on the roboRIO's main SPI port, 4 for the roboRIO MXP connector.
+                                 For CS0-3, configure Pixy2 to use SPI with SS. (slave select, AKA chip select, or CS).  Connect CS to the main port's CSx.
+                                 For MXP, configure Pixy2 to use "Arduino ICSP SPI" (which doesn't use a chip select).  Leave the CS pin disconnected.
                             I2C: 0 (or anything else) for the on-board I2C, 1 for the MXP connector.
                             UART: 0 for onboard, 1-3 for USB, 4 for MXP connector.
         Call init() after creation and before anything else to start communication with Pixy2.

@@ -13,7 +13,10 @@ class MAKORobot(wpilib.TimedRobot):
            In it, we should initialize the robot's shared variables and objects.
         """
         self.print_timer = wpilib.Timer() # A timer to help us print info periodically; still need to start it.
-        self.pixy = pixy2api.pixy2.Pixy2(pixy2api.pixy2.Pixy2.LinkType.SPI, 0)
+
+        # See Pixy code for more details on configuration.  Tested options for the final parameter below are
+        # 0 for chip select 0 using the roboRIO's main SPI port, 4 for the MXP connector's SPI, which doesn't have a Chip Select pin.
+        self.pixy = pixy2api.pixy2.Pixy2(pixy2api.pixy2.Pixy2.LinkType.SPI, 4)
         self.pixy.init() # Need to call init() to start communication with the Pixy2.
         print('FPS: {}'.format(self.pixy.getFPS()))
         #print('lamp white: {}'.format(self.pixy.setLamp(1,0)))
