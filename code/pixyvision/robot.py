@@ -56,7 +56,6 @@ class MAKORobot(wpilib.TimedRobot):
             # Send a string representing the red component to a field called 'DB/String 0' on the SmartDashboard.
             # The default driver station dashboard's "Basic" tab has some pre-defined keys/fields
             # that it looks for, which is why I chose these.
-            wpilib.SmartDashboard.putString('DB/String 0', 'some value{:5.3f}'.format(0.25))
             # Send info to the logger and thus console.
             # Note the string format: the part in {} gets replaced by the value of the variable
             # user_value, and is formatted as a floating point (the "f"), with 4 digits and 2 digits
@@ -65,7 +64,16 @@ class MAKORobot(wpilib.TimedRobot):
             num_blocks = self.pixy.getCCC().getBlocks(wait=False, sigmap=0x01, maxBlocks=10)
             if num_blocks > 0:
                 blocks = self.pixy.getCCC().getBlockCache()
-                print('blocks: {} {}'.format(num_blocks, blocks[0].toString()))
+#                print('blocks: {} {} {}'.format(num_blocks, len(blocks), blocks[0].toString()))
+                wpilib.SmartDashboard.putString('DB/String 0', 'pos x {:3d}'.format(blocks[0].getX()))
+                wpilib.SmartDashboard.putString('DB/String 1', 'pos y {:3d}'.format(blocks[0].getY()))
+                wpilib.SmartDashboard.putString('DB/String 5', 'width  {:3d}'.format(blocks[0].getWidth()))
+                wpilib.SmartDashboard.putString('DB/String 6', 'height {:3d}'.format(blocks[0].getHeight()))
+                wpilib.SmartDashboard.putString('DB/String 2', 'index {:3d}'.format(blocks[0].getIndex()))
+                wpilib.SmartDashboard.putString('DB/String 7', 'age {:3d}'.format(blocks[0].getAge()))
+                wpilib.SmartDashboard.putString('DB/String 4', 'num blocks {:3d}'.format(num_blocks))
+                if num_blocks > 1:
+                    wpilib.SmartDashboard.putString('DB/String 9', '2nd block x,y {:3d} {:3d}'.format(blocks[1].getX(), blocks[1].getY()))
             else:
                 print('blocks: {}'.format(num_blocks))
 

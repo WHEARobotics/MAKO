@@ -93,7 +93,7 @@ class Pixy2CCC(object):
                                            ((self.pixy.response_buffer[i+11] & 0xFF) << 8) | (self.pixy.response_buffer[i+10] & 0xFF),
                                            (self.pixy.response_buffer[i+12] & 0xFF), (self.pixy.response_buffer[i+13] & 0xFF))
                         self.blocks.append(b)
-                        return len(self.blocks)
+                    return len(self.blocks)
                 elif self.pixy.type == pixy2api.pixy2.Pixy2.PIXY_TYPE_RESPONSE_ERROR:
                     # Deal with busy and program changing states from Pixy2 (we'll wait).
                     if self.pixy.response_buffer[0] == pixy2api.pixy2.Pixy2.PIXY_RESULT_BUSY:
@@ -169,7 +169,7 @@ class Pixy2CCC(object):
 
         def getY(self):
             """:returns Block y value."""
-            return self.signature
+            return self.y
 
         def getWidth(self):
             """:returns Block width."""
@@ -183,7 +183,7 @@ class Pixy2CCC(object):
             """:returns Block angle."""
             return self.angle
 
-        def getIndex    (self):
+        def getIndex(self):
             """:returns Block index."""
             return self.index
 
