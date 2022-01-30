@@ -35,10 +35,13 @@ class MAKORobot(wpilib.TimedRobot):
         self.drive_rf = rev.CANSparkMax(3, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
         self.drive_lr = rev.CANSparkMax(2, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
         self.drive_lf = rev.CANSparkMax(4, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.drive_rr.setInverted(False)
-        self.drive_rf.setInverted(False)
-        self.drive_lr.setInverted(False)
-        self.drive_lf.setInverted(False)
+
+        # Inversion configuration for the 2022 WPILib MecanumDrive code, which removed internal inversion for right-side motors.
+        self.drive_rr.setInverted(True) # 
+        self.drive_rf.setInverted(True) # 
+        self.drive_lr.setInverted(False) # 
+        self.drive_lf.setInverted(False) # 
+
         # Set all motors to coast mode when idle/neutral.
         # Note that this is "IdleMode" rather than the "NeutralMode" nomenclature used by CTRE CANTalons.
         self.drive_rr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
@@ -82,12 +85,14 @@ class MAKORobot(wpilib.TimedRobot):
         """This function is called periodically during teleop."""
 
         # Drive using the joystick inputs for y, x, z, and gyro angle. (note the weird order of x and y)
-        # +Y is right, and that is +X on the joystick.
-        # +X is forward, but that is -Y to the joystick.
-        # +Z is clockwise, and that is the same on the joystick.
-        # gyro angle = 0.0 to drive from the point of view of someone on the robot.
-        # gyro angle using the gyro to drive from a fixed observer's point of view.
-        self.drivetrain.driveCartesian(self.joystick.getX() / 4, -self.joystick.getY() / 4, self.joystick.getZ() / 4, -self.gyro.getAngle())
+        # Drive configuration using the 2022 WPILib library code, which changed some definitions.
+        # Positive X is right, and is +X on the joystick.
+        # Positive Y is forward, and is -Y on the joystick
+        # They say positive Z is down, and CW is positive, and CW is +Z on the joystick, and that is
+        # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
+        # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
+        # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
+        self.drivetrain.driveCartesian(-self.joystick.getY() / 4, self.joystick.getX() / 4, self.joystick.getZ() / 4, -self.gyro.getAngle())
 
         # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 1.0 seconds.
@@ -112,6 +117,7 @@ class MAKORobot(wpilib.TimedRobot):
             # user_value, and is formatted as a floating point (the "f"), with 4 digits and 2 digits
             # after the decimal place. https://docs.python.org/3/library/string.html#formatstrings
             #self.logger.info('Slider 1 is {:4.2f}'.format(user_value))
+
 
 
 # The following little bit of code allows us to run the robot program.
