@@ -8,6 +8,14 @@ import wpilib.drive
 import rev
 
 class MAKORobot(wpilib.TimedRobot):
+    # Defining constants to use across the class. (they aren't actually constant, but the convention is
+    # that ALLCAPS denote constants.)
+    # Auto names include the target location.
+    ELEV_MANUAL = 0
+    ELEV_AUTO_MID = 1
+    ELEV_AUTO_BOT = 2
+    ELEV_MID_POSITION = 60 # (rotations 60:1 reduction)
+
     def robotInit(self):
         """This function is called upon program startup as part of WPILIB/FRC/RobotPy.
            In it, we should initialize the robot's shared variables and objects.
@@ -24,25 +32,27 @@ class MAKORobot(wpilib.TimedRobot):
         # First turned on, and then repeated 2.5-minute tests: 9.9, 1.8, 3.0, 16.8 (!), 1.6, 8.0 degrees.
         # Similar test, after the robot had been on 1/2 hour:  2.4, 1.9, -2.0, 0.3, 0.3, 0.7 degrees.
 
-        # Configure the input control, a single joystick.  Rod has a CAD joystick that shows up as 0, hence I use "1" in the argument.
+        # Choose joystick or Xbox controller, also see comment in teleopPeriodic().
+        # Rod has a CAD joystick that shows up as 0, hence I use "1" in the argument.
         # Thrustmaster joystick, set as left handed.
         # Positive values for channels 0-3: x, y, z, and throttle correspond to: right, backwards, clockwise, and slid back toward the user.
         # The "twist" channel is the same as z.
         self.joystick = wpilib.Joystick(1)
+        #self.xbox = wpilib.XboxController(1)
 
         # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
         self.drive_rr = rev.CANSparkMax(1, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
         self.drive_rf = rev.CANSparkMax(3, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
         self.drive_lr = rev.CANSparkMax(2, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
         self.drive_lf = rev.CANSparkMax(4, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        # self.elevator = rev.CANSparkMax(5, rev.CANSparkMax.MotorType.kBrushless)
+        self.elevator = rev.CANSparkMax(5, rev.CANSparkMax.MotorType.kBrushless)
 
         # Inversion configuration for the 2022 WPILib MecanumDrive code, which removed internal inversion for right-side motors.
         self.drive_rr.setInverted(True) # 
         self.drive_rf.setInverted(True) # 
         self.drive_lr.setInverted(False) # 
         self.drive_lf.setInverted(False) # 
-        # self.elevator.setInverted(False)
+        self.elevator.setInverted(False)
 
         # Set all motors to coast mode when idle/neutral.
         # Note that this is "IdleMode" rather than the "NeutralMode" nomenclature used by CTRE CANTalons.
@@ -50,12 +60,18 @@ class MAKORobot(wpilib.TimedRobot):
         self.drive_rf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
         self.drive_lr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
         self.drive_lf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
-        # self.elevator.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        self.elevator.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
 
         # Now that we have motors, we can set up an object that will handle mecanum drive.
         # From the documentation, North, East, and Down are the three axes.
         # Positive X is forward, Positive Y is right, Positive Z is down.  Clockwise rotation around Z (as viewed from ___) is positive.
         self.drivetrain = wpilib.drive.MecanumDrive(self.drive_lf, self.drive_lr, self.drive_rf, self.drive_rr)
+
+        # Initialize elevator control
+        self.elev_position = self.elevator.getEncoder()
+        self.elev_position.setPosition(0.0) # assumes resting at the bottom.
+        self.elev_bottom_switch = self.elevator.getReverseLimitSwitch(rev.SparkMaxLimitSwitch.Type.kNormallyOpen)
+        self.elevator_control_state = self.ELEV_MANUAL
 
     def disabledInit(self):
         """This function gets called once when the robot is disabled.
@@ -87,6 +103,31 @@ class MAKORobot(wpilib.TimedRobot):
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
 
+        # Get values from either the joystick or the Xbox controller, and put them into temporary values we can 
+        # access later in this method.  This way we can switch between joystick and Xbox by changing comments on two lines
+        # in robotInit() and on the relevant sections below
+        # Uncomment one section and comment the other.
+
+        # Joystick
+        move_y = -self.joystick.getY()
+        move_x = self.joystick.getX()
+        move_z = self.joystick.getZ()
+        command_bottom = self.joystick.getRawButton(3)
+        command_mid = self.joystick.getRawButton(4)
+        manual_elevator = self.joystick.getRawAxis(3)
+
+        # Xbox
+        # move_y = -self.xbox.getRightY()
+        # move_x = self.xbox.getRightX()
+        # move_z = self.xbox.getLeftX()
+        # command_bottom = self.xbox.getLeftBumper()
+        # command_mid = self.xbox.getRightBumper()
+        # # Calculate manual elevator
+        # if self.xbox.getLeftTriggerAxis() > 0.0:
+        #     manual_elevator = -self.xbox.getLeftTriggerAxis()
+        # else:
+        #     manual_elevator = self.xbox.getRightTriggerAxis()
+
         # Drive using the joystick inputs for y, x, z, and gyro angle. (note the weird order of x and y)
         # Drive configuration using the 2022 WPILib library code, which changed some definitions.
         # Positive X is right, and is +X on the joystick.
@@ -95,14 +136,44 @@ class MAKORobot(wpilib.TimedRobot):
         # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
         # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
         # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
-        self.drivetrain.driveCartesian(-self.joystick.getY() / 4, self.joystick.getX() / 4, self.joystick.getZ() / 4, -self.gyro.getAngle())
+        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
         # self.drivetrain.driveCartesian(0.0, 0.0, 0.0, 0.0)
-        # self.drive_rr.set(0.0) # 
-        # self.drive_rf.set(0.0) # 
-        # self.drive_lr.set(0.0) # 
-        # self.drive_lf.set(0.0) # 
-        user_value = wpilib.SmartDashboard.getNumber('DB/Slider 1', 0.0)
-        # self.elevator.set(user_value)
+
+        # Elevator state machine
+        # Grab the position and velocity
+        position = self.elev_position.getPosition()
+        velocity = self.elev_position.getVelocity()
+
+        # First decide if we need to change states.
+        if self.elevator_control_state == self.ELEV_MANUAL:
+            if command_bottom:
+                self.elevator_control_state = self.ELEV_AUTO_BOT
+            elif command_mid:
+                self.elevator_control_state = self.ELEV_AUTO_MID
+        elif self.elevator_control_state == self.ELEV_AUTO_MID:
+            if self.isClose(position, self.ELEV_MID_POSITION, velocity):
+                self.elevator_control_state = self.ELEV_MANUAL
+            elif command_bottom:
+                # Want to override and return to bottom if A pressed.
+                self.elevator_control_state = self.ELEV_AUTO_BOT
+        else:
+            # Only three states, so this is auto bottom
+            if self.elev_bottom_switch.get():
+                self.elevator_control_state = self.ELEV_MANUAL
+                self.elev_position.setPosition(0.0) # Reset the position when the switch is activated
+
+        # Then do something with the state.
+        if self.elevator_control_state == self.ELEV_MANUAL:
+            self.elevator.set(manual_elevator/5)
+        elif self.elevator_control_state == self.ELEV_AUTO_MID:
+            if position < self.ELEV_MID_POSITION:
+                self.elevator.set(0.1)
+            else:
+                self.elevator.set(-0.1)
+        else:
+            # Only three states, so this is auto bottom, going down.
+            self.elevator.set(-0.1)
+            
 
         # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 1.0 seconds.
@@ -110,13 +181,11 @@ class MAKORobot(wpilib.TimedRobot):
             # Send a string representing the red component to a field called 'DB/String 0' on the SmartDashboard.
             # The default driver station dashboard's "Basic" tab has some pre-defined keys/fields
             # that it looks for, which is why I chose these.
-#            wpilib.SmartDashboard.putString('DB/String 0', 'x:   {:5.3f}'.format(self.joystick.getX()))
-#            wpilib.SmartDashboard.putString('DB/String 1', 'y: {:5.3f}'.format(self.joystick.getY()))
-#            wpilib.SmartDashboard.putString('DB/String 2', 'z:  {:5.3f}'.format(self.joystick.getZ()))
+            wpilib.SmartDashboard.putString('DB/String 0', 'Man Elev   {:5.3f}'.format(manual_elevator))
+            # wpilib.SmartDashboard.putString('DB/String 1', 'R: {:5.3f}'.format(self.xbox.getRightTriggerAxis()))
+            wpilib.SmartDashboard.putString('DB/String 2', 'state:  {:5.3f}'.format(self.elevator_control_state))
             wpilib.SmartDashboard.putString('DB/String 3', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
-            # wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
-            # wpilib.SmartDashboard.putBoolean('DB/LED 0', password) # Light the virtual LED if the password has been entered properly.
-            # wpilib.SmartDashboard.putString('DB/String 5', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
+            wpilib.SmartDashboard.putString('DB/String 5', 'pos: {:5.1f}'.format(self.elev_position.getPosition()))
 
             # You can use your mouse to move the DB/Slider 1 slider on the dashboard, and read
             # the value it shows with the command below.  0.0 below is the default value, should
@@ -128,7 +197,9 @@ class MAKORobot(wpilib.TimedRobot):
             # after the decimal place. https://docs.python.org/3/library/string.html#formatstrings
             #self.logger.info('Slider 1 is {:4.2f}'.format(user_value))
 
-
+    def isClose(self, pos, target, vel):
+        """Returns true if the position (pos) and desired target position are close together."""
+        return ((pos > target - 2) and (pos < target + 2))
 
 # The following little bit of code allows us to run the robot program.
 # In Python, the special variable __name__ contains the name of the module that it is in,
