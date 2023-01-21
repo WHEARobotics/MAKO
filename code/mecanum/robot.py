@@ -24,11 +24,13 @@ class MAKORobot(wpilib.TimedRobot):
         # First turned on, and then repeated 2.5-minute tests: 9.9, 1.8, 3.0, 16.8 (!), 1.6, 8.0 degrees.
         # Similar test, after the robot had been on 1/2 hour:  2.4, 1.9, -2.0, 0.3, 0.3, 0.7 degrees.
 
-        # Configure the input control, a single joystick.  Rod has a CAD joystick that shows up as 0, hence I use "1" in the argument.
+        # Choose joystick or Xbox controller, also see comment in teleopPeriodic().
+        # Rod has a CAD joystick that shows up as 0, hence I use "1" in the argument.
         # Thrustmaster joystick, set as left handed.
         # Positive values for channels 0-3: x, y, z, and throttle correspond to: right, backwards, clockwise, and slid back toward the user.
         # The "twist" channel is the same as z.
-        self.joystick = wpilib.Joystick(1)
+        # self.joystick = wpilib.Joystick(1)
+        self.xbox = wpilib.XboxController(1)
 
         # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
         self.drive_rr = rev.CANSparkMax(1, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
@@ -59,7 +61,6 @@ class MAKORobot(wpilib.TimedRobot):
            In the past, we have not used this function, but it could occasionally
            be useful.  In this case, we reset some SmartDashboard values.
         """
-        wpilib.SmartDashboard.putString('DB/String 0', '')
         wpilib.SmartDashboard.putNumber('DB/Slider 0', 0)
         wpilib.SmartDashboard.putBoolean('DB/LED 0', False)
 
@@ -84,6 +85,21 @@ class MAKORobot(wpilib.TimedRobot):
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
 
+        # Get values from either the joystick or the Xbox controller, and put them into temporary values we can 
+        # access later in this method.  This way we can switch between joystick and Xbox by changing comments on two lines
+        # in robotInit() and on the relevant sections below
+        # Uncomment one section and comment the other.
+
+        # Joystick
+        # move_y = -self.joystick.getY()
+        # move_x = self.joystick.getX()
+        # move_z = self.joystick.getZ()
+
+        # Xbox
+        move_y = -self.xbox.getRightY()
+        move_x = self.xbox.getRightX()
+        move_z = self.xbox.getLeftX()
+
         # Drive using the joystick inputs for y, x, z, and gyro angle. (note the weird order of x and y)
         # Drive configuration using the 2022 WPILib library code, which changed some definitions.
         # Positive X is right, and is +X on the joystick.
@@ -92,7 +108,7 @@ class MAKORobot(wpilib.TimedRobot):
         # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
         # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
         # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
-        self.drivetrain.driveCartesian(-self.joystick.getY() / 4, self.joystick.getX() / 4, self.joystick.getZ() / 4, -self.gyro.getAngle())
+        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
 
         # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 1.0 seconds.
@@ -100,13 +116,9 @@ class MAKORobot(wpilib.TimedRobot):
             # Send a string representing the red component to a field called 'DB/String 0' on the SmartDashboard.
             # The default driver station dashboard's "Basic" tab has some pre-defined keys/fields
             # that it looks for, which is why I chose these.
-            wpilib.SmartDashboard.putString('DB/String 0', 'x:   {:5.3f}'.format(self.joystick.getX()))
-            wpilib.SmartDashboard.putString('DB/String 1', 'y: {:5.3f}'.format(self.joystick.getY()))
-            wpilib.SmartDashboard.putString('DB/String 2', 'z:  {:5.3f}'.format(self.joystick.getZ()))
-            wpilib.SmartDashboard.putString('DB/String 3', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
+            wpilib.SmartDashboard.putString('DB/String 0', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
             # wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
             # wpilib.SmartDashboard.putBoolean('DB/LED 0', password) # Light the virtual LED if the password has been entered properly.
-            # wpilib.SmartDashboard.putString('DB/String 5', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
 
             # You can use your mouse to move the DB/Slider 1 slider on the dashboard, and read
             # the value it shows with the command below.  0.0 below is the default value, should
