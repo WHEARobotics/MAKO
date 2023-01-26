@@ -3,6 +3,7 @@
     WHEA Robotics code for the MAKO robot project.
 """
 
+import wpimath
 import wpilib
 import wpilib.drive
 import rev
@@ -17,7 +18,7 @@ class MAKORobot(wpilib.TimedRobot):
         # Gyro measures rate of rotation, and plugs into the "SPI" port on the roboRIO
         # https://wiki.analog.com/first/adxrs450_gyro_board_frc
         # Positive rotation is clockwise.
-        self.gyro = wpilib.ADXRS450_Gyro() # Calibration happens during initialization, so keep the robot still when powering on.
+        # self.gyro = wpilib.ADXRS450_Gyro(wpilib._wpilib.SPI.Port.kOnboardCS0) # Calibration happens during initialization, so keep the robot still when powering on.
         # It is best to let the robot warm up so that the sensor reaches a steady temperature before calibrating it.  This may not
         # always be possible in a match situation.  For reference, Rod measured the amount of drift during a 2:30 match by just letting
         # the robot sit still.  I rebooted robot code between measurements, so that recalibration and zeroing would happen.
@@ -32,7 +33,7 @@ class MAKORobot(wpilib.TimedRobot):
         # self.joystick = wpilib.Joystick(1)
         self.xbox = wpilib.XboxController(1)
 
-        # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
+        # # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
         self.drive_rr = rev.CANSparkMax(1, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
         self.drive_rf = rev.CANSparkMax(3, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
         self.drive_lr = rev.CANSparkMax(2, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
@@ -51,9 +52,9 @@ class MAKORobot(wpilib.TimedRobot):
         self.drive_lr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
         self.drive_lf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
 
-        # Now that we have motors, we can set up an object that will handle mecanum drive.
-        # From the documentation, North, East, and Down are the three axes.
-        # Positive X is forward, Positive Y is right, Positive Z is down.  Clockwise rotation around Z (as viewed from ___) is positive.
+        # # Now that we have motors, we can set up an object that will handle mecanum drive.
+        # # From the documentation, North, East, and Down are the three axes.
+        # # Positive X is forward, Positive Y is right, Positive Z is down.  Clockwise rotation around Z (as viewed from ___) is positive.
         self.drivetrain = wpilib.drive.MecanumDrive(self.drive_lf, self.drive_lr, self.drive_rf, self.drive_rr)
 
     def disabledInit(self):
@@ -61,8 +62,9 @@ class MAKORobot(wpilib.TimedRobot):
            In the past, we have not used this function, but it could occasionally
            be useful.  In this case, we reset some SmartDashboard values.
         """
-        wpilib.SmartDashboard.putNumber('DB/Slider 0', 0)
-        wpilib.SmartDashboard.putBoolean('DB/LED 0', False)
+        # wpilib.SmartDashboard.putNumber('DB/Slider 0', 0)
+        # wpilib.SmartDashboard.putBoolean('DB/LED 0', False)
+        pass
 
     def disabledPeriodic(self):
         """Another function we have not used in the past.  Adding for completeness."""
@@ -70,8 +72,8 @@ class MAKORobot(wpilib.TimedRobot):
 
     def autonomousInit(self):
         """This function is run once each time the robot enters autonomous mode."""
-        self.gyro.reset()  # Reset at the beginning of a match, because the robot could have been sitting for a while, gyro drifting.
-        pass
+        # self.gyro.reset()  # Reset at the beginning of a match, because the robot could have been sitting for a while, gyro drifting.
+        # pass
 
     def autonomousPeriodic(self):
         """This function is called periodically during autonomous."""
@@ -80,11 +82,11 @@ class MAKORobot(wpilib.TimedRobot):
     def teleopInit(self):
         """This function is run once each time the robot enters teleop mode."""
         self.print_timer.start() # Now it starts counting.
-        self.gyro.reset() # Also reset the gyro angle.  This means you should always start in a known orientation.
+        # self.gyro.reset() # Also reset the gyro angle.  This means you should always start in a known orientation.
 
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
-
+        
         # Get values from either the joystick or the Xbox controller, and put them into temporary values we can 
         # access later in this method.  This way we can switch between joystick and Xbox by changing comments on two lines
         # in robotInit() and on the relevant sections below
@@ -108,22 +110,26 @@ class MAKORobot(wpilib.TimedRobot):
         # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
         # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
         # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
-        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
+        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, wpimath.geometry._geometry.Rotation2d(0.0))
+        # self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
 
-        # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
-        # the timer's internal "start time".  This period is 1.0 seconds.
-        if self.print_timer.hasPeriodPassed(1.0):
+        # The timer's advanceIfElapsed() method returns true if the time has passed, and updates
+        # the timer's internal "start time".  This period is 0.2 seconds.
+        if self.print_timer.advanceIfElapsed(0.2):
             # Send a string representing the red component to a field called 'DB/String 0' on the SmartDashboard.
             # The default driver station dashboard's "Basic" tab has some pre-defined keys/fields
             # that it looks for, which is why I chose these.
-            wpilib.SmartDashboard.putString('DB/String 0', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
+            # wpilib.SmartDashboard.putString('DB/String 0', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
+            wpilib.SmartDashboard.putString('DB/String 0', 'X: {:5.1f}'.format(move_x))
+            wpilib.SmartDashboard.putString('DB/String 1', 'Y: {:5.1f}'.format(move_y))
+            wpilib.SmartDashboard.putString('DB/String 1', 'Z: {:5.1f}'.format(move_z))
             # wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
             # wpilib.SmartDashboard.putBoolean('DB/LED 0', password) # Light the virtual LED if the password has been entered properly.
 
             # You can use your mouse to move the DB/Slider 1 slider on the dashboard, and read
             # the value it shows with the command below.  0.0 below is the default value, should
             # the key 'Db/Slider 1' not exist in the SmartDashboard table (for instance, a typo).
-            user_value = wpilib.SmartDashboard.getNumber('DB/Slider 1', 0.0)
+            # user_value = wpilib.SmartDashboard.getNumber('DB/Slider 1', 0.0)
             # Send info to the logger and thus console.
             # Note the string format: the part in {} gets replaced by the value of the variable
             # user_value, and is formatted as a floating point (the "f"), with 4 digits and 2 digits
