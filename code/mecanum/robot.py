@@ -72,8 +72,8 @@ class MAKORobot(wpilib.TimedRobot):
 
     def autonomousInit(self):
         """This function is run once each time the robot enters autonomous mode."""
-        # self.gyro.reset()  # Reset at the beginning of a match, because the robot could have been sitting for a while, gyro drifting.
-        # pass
+        self.gyro.reset()  # Reset at the beginning of a match, because the robot could have been sitting for a while, gyro drifting.
+
 
     def autonomousPeriodic(self):
         """This function is called periodically during autonomous."""
@@ -82,7 +82,7 @@ class MAKORobot(wpilib.TimedRobot):
     def teleopInit(self):
         """This function is run once each time the robot enters teleop mode."""
         self.print_timer.start() # Now it starts counting.
-        # self.gyro.reset() # Also reset the gyro angle.  This means you should always start in a known orientation.
+        self.gyro.reset() # Also reset the gyro angle.  This means you should always start in a known orientation.
 
     def teleopPeriodic(self):
         """This function is called periodically during teleop."""
