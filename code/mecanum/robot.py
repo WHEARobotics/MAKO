@@ -18,7 +18,7 @@ class MAKORobot(wpilib.TimedRobot):
         # Gyro measures rate of rotation, and plugs into the "SPI" port on the roboRIO
         # https://wiki.analog.com/first/adxrs450_gyro_board_frc
         # Positive rotation is clockwise.
-        # self.gyro = wpilib.ADXRS450_Gyro(wpilib._wpilib.SPI.Port.kOnboardCS0) # Calibration happens during initialization, so keep the robot still when powering on.
+        self.gyro = wpilib.ADXRS450_Gyro(wpilib._wpilib.SPI.Port.kOnboardCS0) # Calibration happens during initialization, so keep the robot still when powering on.
         # It is best to let the robot warm up so that the sensor reaches a steady temperature before calibrating it.  This may not
         # always be possible in a match situation.  For reference, Rod measured the amount of drift during a 2:30 match by just letting
         # the robot sit still.  I rebooted robot code between measurements, so that recalibration and zeroing would happen.
@@ -110,8 +110,8 @@ class MAKORobot(wpilib.TimedRobot):
         # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
         # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
         # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
-        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, wpimath.geometry._geometry.Rotation2d(0.0))
-        # self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
+        # self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, wpimath.geometry._geometry.Rotation2d(0.0))
+        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
 
         # The timer's advanceIfElapsed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 0.2 seconds.
@@ -119,10 +119,10 @@ class MAKORobot(wpilib.TimedRobot):
             # Send a string representing the red component to a field called 'DB/String 0' on the SmartDashboard.
             # The default driver station dashboard's "Basic" tab has some pre-defined keys/fields
             # that it looks for, which is why I chose these.
-            # wpilib.SmartDashboard.putString('DB/String 0', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
-            wpilib.SmartDashboard.putString('DB/String 0', 'X: {:5.1f}'.format(move_x))
-            wpilib.SmartDashboard.putString('DB/String 1', 'Y: {:5.1f}'.format(move_y))
-            wpilib.SmartDashboard.putString('DB/String 1', 'Z: {:5.1f}'.format(move_z))
+            wpilib.SmartDashboard.putString('DB/String 0', 'Angle: {:5.1f}'.format(self.gyro.getAngle()))
+            wpilib.SmartDashboard.putString('DB/String 1', 'X: {:5.1f}'.format(move_x))
+            wpilib.SmartDashboard.putString('DB/String 2', 'Y: {:5.1f}'.format(move_y))
+            wpilib.SmartDashboard.putString('DB/String 3', 'Z: {:5.1f}'.format(move_z))
             # wpilib.SmartDashboard.putNumber('DB/Slider 0', 4)
             # wpilib.SmartDashboard.putBoolean('DB/LED 0', password) # Light the virtual LED if the password has been entered properly.
 
