@@ -30,7 +30,7 @@ class MAKORobot(wpilib.TimedRobot):
         # Thrustmaster joystick, set as left handed.
         # Positive values for channels 0-3: x, y, z, and throttle correspond to: right, backwards, clockwise, and slid back toward the user.
         # The "twist" channel is the same as z.
-        # self.joystick = wpilib.Joystick(1)
+        # self.joystick = wpilib.Joystick(2)
         self.xbox = wpilib.XboxController(2)
 
         # # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
