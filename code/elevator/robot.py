@@ -2,9 +2,10 @@
 """
     WHEA Robotics code for the MAKO robot project.
 """
-
+import math
 import wpilib
 import wpilib.drive
+import wpimath.geometry
 import rev
 
 class MAKORobot(wpilib.TimedRobot):
@@ -37,14 +38,14 @@ class MAKORobot(wpilib.TimedRobot):
         # Thrustmaster joystick, set as left handed.
         # Positive values for channels 0-3: x, y, z, and throttle correspond to: right, backwards, clockwise, and slid back toward the user.
         # The "twist" channel is the same as z.
-        self.joystick = wpilib.Joystick(1)
-        #self.xbox = wpilib.XboxController(1)
+        # self.joystick = wpilib.Joystick(1)
+        self.xbox = wpilib.XboxController(2)
 
         # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
-        self.drive_rr = rev.CANSparkMax(1, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.drive_rf = rev.CANSparkMax(3, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.drive_lr = rev.CANSparkMax(2, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.drive_lf = rev.CANSparkMax(4, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
+        self.drive_rr = rev.CANSparkMax(1, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_rf = rev.CANSparkMax(3, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_lr = rev.CANSparkMax(2, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_lf = rev.CANSparkMax(4, rev.CANSparkMax.MotorType.kBrushless)
         self.elevator = rev.CANSparkMax(5, rev.CANSparkMax.MotorType.kBrushless)
 
         # Inversion configuration for the 2022 WPILib MecanumDrive code, which removed internal inversion for right-side motors.
@@ -56,10 +57,10 @@ class MAKORobot(wpilib.TimedRobot):
 
         # Set all motors to coast mode when idle/neutral.
         # Note that this is "IdleMode" rather than the "NeutralMode" nomenclature used by CTRE CANTalons.
-        self.drive_rr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_rf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_lr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_lf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_rr.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_rf.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_lr.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_lf.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
         self.elevator.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
 
         # Now that we have motors, we can set up an object that will handle mecanum drive.
@@ -109,24 +110,24 @@ class MAKORobot(wpilib.TimedRobot):
         # Uncomment one section and comment the other.
 
         # Joystick
-        move_y = -self.joystick.getY()
-        move_x = self.joystick.getX()
-        move_z = self.joystick.getZ()
-        command_bottom = self.joystick.getRawButton(3)
-        command_mid = self.joystick.getRawButton(4)
-        manual_elevator = self.joystick.getRawAxis(3)
+        # move_y = -self.joystick.getY()
+        # move_x = self.joystick.getX()
+        # move_z = self.joystick.getZ()
+        # command_bottom = self.joystick.getRawButton(3)
+        # command_mid = self.joystick.getRawButton(4)
+        # manual_elevator = self.joystick.getRawAxis(3)
 
         # Xbox
-        # move_y = -self.xbox.getRightY()
-        # move_x = self.xbox.getRightX()
-        # move_z = self.xbox.getLeftX()
-        # command_bottom = self.xbox.getLeftBumper()
-        # command_mid = self.xbox.getRightBumper()
-        # # Calculate manual elevator
-        # if self.xbox.getLeftTriggerAxis() > 0.0:
-        #     manual_elevator = -self.xbox.getLeftTriggerAxis()
-        # else:
-        #     manual_elevator = self.xbox.getRightTriggerAxis()
+        move_y = -self.xbox.getRightY()
+        move_x = self.xbox.getRightX()
+        move_z = self.xbox.getLeftX()
+        command_bottom = self.xbox.getLeftBumper()
+        command_mid = self.xbox.getRightBumper()
+        # Calculate manual elevator
+        if self.xbox.getLeftTriggerAxis() > 0.0:
+            manual_elevator = -self.xbox.getLeftTriggerAxis()
+        else:
+            manual_elevator = self.xbox.getRightTriggerAxis()
 
         # Drive using the joystick inputs for y, x, z, and gyro angle. (note the weird order of x and y)
         # Drive configuration using the 2022 WPILib library code, which changed some definitions.
@@ -136,7 +137,8 @@ class MAKORobot(wpilib.TimedRobot):
         # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
         # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
         # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
-        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
+        heading = wpimath.geometry.Rotation2d(-self.gyro.getAngle() * math.pi / 180)
+        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, heading)
         # self.drivetrain.driveCartesian(0.0, 0.0, 0.0, 0.0)
 
         # Elevator state machine
@@ -175,9 +177,9 @@ class MAKORobot(wpilib.TimedRobot):
             self.elevator.set(-0.1)
             
 
-        # The timer's hasPeriodPassed() method returns true if the time has passed, and updates
+        # The timer's advanceIfElapsed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 1.0 seconds.
-        if self.print_timer.hasPeriodPassed(1.0):
+        if self.print_timer.advanceIfElapsed(1.0):
             # Send a string representing the red component to a field called 'DB/String 0' on the SmartDashboard.
             # The default driver station dashboard's "Basic" tab has some pre-defined keys/fields
             # that it looks for, which is why I chose these.

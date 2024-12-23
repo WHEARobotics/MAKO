@@ -2,8 +2,8 @@
 """
     WHEA Robotics code for the MAKO robot project.
 """
-
-import wpimath
+import math
+import wpimath.geometry
 import wpilib
 import wpilib.drive
 import rev
@@ -31,13 +31,13 @@ class MAKORobot(wpilib.TimedRobot):
         # Positive values for channels 0-3: x, y, z, and throttle correspond to: right, backwards, clockwise, and slid back toward the user.
         # The "twist" channel is the same as z.
         # self.joystick = wpilib.Joystick(1)
-        self.xbox = wpilib.XboxController(1)
+        self.xbox = wpilib.XboxController(2)
 
         # # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
-        self.drive_rr = rev.CANSparkMax(1, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.drive_rf = rev.CANSparkMax(3, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.drive_lr = rev.CANSparkMax(2, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
-        self.drive_lf = rev.CANSparkMax(4, rev._rev.CANSparkMaxLowLevel.MotorType.kBrushless)
+        self.drive_rr = rev.CANSparkMax(1, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_rf = rev.CANSparkMax(3, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_lr = rev.CANSparkMax(2, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_lf = rev.CANSparkMax(4, rev.CANSparkMax.MotorType.kBrushless)
 
         # Inversion configuration for the 2022 WPILib MecanumDrive code, which removed internal inversion for right-side motors.
         self.drive_rr.setInverted(True) # 
@@ -47,10 +47,10 @@ class MAKORobot(wpilib.TimedRobot):
 
         # Set all motors to coast mode when idle/neutral.
         # Note that this is "IdleMode" rather than the "NeutralMode" nomenclature used by CTRE CANTalons.
-        self.drive_rr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_rf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_lr.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_lf.setIdleMode(rev._rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_rr.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_rf.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_lr.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        self.drive_lf.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
 
         # # Now that we have motors, we can set up an object that will handle mecanum drive.
         # # From the documentation, North, East, and Down are the three axes.
@@ -110,8 +110,9 @@ class MAKORobot(wpilib.TimedRobot):
         # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
         # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
         # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
-        # self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, wpimath.geometry._geometry.Rotation2d(0.0))
-        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, -self.gyro.getAngle())
+        # self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, wpimath.geometry.Rotation2d(0.0))
+        heading = wpimath.geometry.Rotation2d(-self.gyro.getAngle() * math.pi / 180)
+        self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, heading)
 
         # The timer's advanceIfElapsed() method returns true if the time has passed, and updates
         # the timer's internal "start time".  This period is 0.2 seconds.
