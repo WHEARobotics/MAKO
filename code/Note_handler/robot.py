@@ -1,8 +1,5 @@
 import wpilib
-import wpilib.drive
-import wpimath
 import rev
-from rev import CANSparkLowLevel
 
 class Myrobot(wpilib.TimedRobot):
     '''Simple robot to drive motors for Note-handling manipulators for 2024.
@@ -12,8 +9,8 @@ class Myrobot(wpilib.TimedRobot):
     def robotInit(self):
         self.xbox = wpilib.XboxController(0)
         # MAKO's left-side motor controllers
-        self.motor2 = rev.CANSparkMax(2, rev._rev.CANSparkLowLevel.MotorType.kBrushless)
-        self.motor4 = rev.CANSparkMax(4, rev._rev.CANSparkLowLevel.MotorType.kBrushless)                 #"Channel" is ID of CANSparkMax Motorcontroller on CAN bus
+        self.motor2 = rev.CANSparkMax(2, rev.CANSparkMax.MotorType.kBrushless)
+        self.motor4 = rev.CANSparkMax(4, rev.CANSparkMax.MotorType.kBrushless)                 #"Channel" is ID of CANSparkMax Motorcontroller on CAN bus
 
     def disabledInit(self):
         pass
