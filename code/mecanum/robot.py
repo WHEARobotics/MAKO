@@ -103,15 +103,14 @@ class MAKORobot(wpilib.TimedRobot):
         move_z = self.xbox.getLeftX()
 
         # Drive using the joystick inputs for y, x, z, and gyro angle. (note the weird order of x and y)
-        # Drive configuration using the 2022 WPILib library code, which changed some definitions.
+        # Drive configuration using the 2024 WPILib library code, which changed some definitions.
         # Positive X is right, and is +X on the joystick.
         # Positive Y is forward, and is -Y on the joystick
         # They say positive Z is down, and CW is positive, and CW is +Z on the joystick, and that is
         # what works.  But it is incorrect vector math, because X cross Y = Z, and when using the right hand rule
         # that makes +Z up, and positive angle starting at X and moving toward Y would be CCW when viewed from above the robot.
-        # I'm not sure about whether the gyro angle should be negated or not.  We'll have to try.
         # self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, wpimath.geometry.Rotation2d(0.0))
-        heading = wpimath.geometry.Rotation2d(-self.gyro.getAngle() * math.pi / 180)
+        heading = wpimath.geometry.Rotation2d(self.gyro.getAngle() * math.pi / 180)
         self.drivetrain.driveCartesian(move_y / 4, move_x / 4, move_z / 4, heading)
 
         # The timer's advanceIfElapsed() method returns true if the time has passed, and updates
