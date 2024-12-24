@@ -126,44 +126,28 @@ class DriveSubsystem(commands2.Subsystem):
     # Methods to use in commands                            #
     #########################################################
 
-    def drive_field_relative(self, right: float, forward: float, rot_cw: float):
+    def drive_field_relative(self, forward: float, right: float, rot_cw: float):
         """Drive in a direction relative to the field (or the driver assuming the 
            robot starts facing the same direction as the driver is facing).
-           :param: right   move rightward from the driver's perspective.
-           :param: forward move away from the driver.
+           :param: forward move away from the driver. (+x direction in Pose)
+           :param: right   move rightward from the driver's perspective. (-y in Pose)
            :param: rot_cw  rotate the robot clockwise as viewed from above. 
            (positive = clockwise, though that makes the angle go negative by proper math.)
         """
         heading_degrees = self.pose.rotation().degrees()
         drive_heading = wpimath.geometry.Rotation2d.fromDegrees(-heading_degrees)
-        #heading = self.gyro.getRotation2d()
 
-        # From the documentation, North, East, and Down are the three axes.
-        # Positive X is forward, Positive Y is right, Positive Z is down.  Clockwise rotation around Z (as viewed from ___) is positive.
+        # driveCartesian's documentation does not match its behavior, at least 
+        # with this omni wheel drive.  Forward is OK, but right/left seems inverted,
+        # as does the rotation.
         self.drivetrain.driveCartesian(
-            right / constants.DRIVE_SLOWER, forward / constants.DRIVE_SLOWER, 
+            forward / constants.DRIVE_SLOWER, right / constants.DRIVE_SLOWER, 
             rot_cw / constants.DRIVE_SLOWER, drive_heading)
 
     #########################################################
     # Helper methods                                        #
     #########################################################
 
-    # def get_heading(self) -> wpimath.geometry.Rotation2d:
-    #     """
-    #     Get the heading, that is the angle the robot is facing, as a Rotation2d 
-    #     object.
-    #     :returns: The heading.  Note that when converted to degrees, the 
-    #     Rotation2d will be negative for a counterclockwise rotation, opposite
-    #     what you would expect.
-    #     """
-    #     return wpimath.geometry.Rotation2d(self.gyro.getAngle() * math.pi / 180)
-
-    # def get_heading_string(self):
-    #     return 'Angle +=CCW: {:5.1f}'.format(-self.get_heading().degrees())
-    
-    # def get_heading_degrees(self) -> float:
-    #     return self.gyro.getAngle()
-    
     def get_current_distances(self)-> wpimath.kinematics.MecanumDriveWheelPositions:
         """
         Returns the current distances measured by the drivetrain.
