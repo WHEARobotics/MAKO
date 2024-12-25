@@ -2,6 +2,7 @@ import commands2
 import wpilib
 
 import subsystems.drivesubsystem
+from constants import UserInterface
 
 class RobotContainer:
     """
@@ -27,9 +28,9 @@ class RobotContainer:
         self.drive.setDefaultCommand(
             commands2.RunCommand(
                 lambda: self.drive.drive_field_relative(
-                    -self.xbox.getRightY(),
-                    self.xbox.getRightX(),
-                    self.xbox.getLeftX()
+                    -self.xbox.getRightY() / UserInterface.DRIVE_SLOWER, # Pushing joystick forward produces a negative number.
+                    -self.xbox.getRightX() / UserInterface.DRIVE_SLOWER, # Pushing joystick left produces a negative number.
+                    -self.xbox.getLeftX() / UserInterface.DRIVE_SLOWER   # Pushing jouystick left produces a negative number, but we want + for CCW/turn left.
                 ),
                 # The subsystem required by the command.
                 self.drive,

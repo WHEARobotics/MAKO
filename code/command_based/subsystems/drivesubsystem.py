@@ -1,3 +1,17 @@
+"""
+Class to interact with MAKO's omni-wheel holonomic drive system as a command-
+based Subsystem.  The class's method definitions are organized groups in the
+following order:
+
+* __init()__: The standard object initialization method.
+* Methods of Subsystem class that we are overriding
+* Command factory methods: methods that return Commands that only use the
+      drive system.
+* Methods that can be used in commands, either by the factories, or by other
+     classes (for instance in the "commands" folder).
+* Helper methods used by the above: measuring speed, distance, etc.
+"""
+
 # Import standard Python modules.
 import math
 
@@ -10,11 +24,11 @@ import wpimath.geometry
 import wpimath.kinematics
 
 # Import our modules.
-import constants
+from constants import UserInterface, DriveConsts
 
 class DriveSubsystem(commands2.Subsystem):
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__() # Call the Subsystem class's (the "super" part) init.
 
         # ---------------------------------------------------------------------
         # The gyro is part of the drive system, since it helps keep the drive
@@ -30,10 +44,10 @@ class DriveSubsystem(commands2.Subsystem):
 
         # Create and configure the drive train controllers and motors, all 
         # REV Robotics SparkMaxes driving NEO motors.
-        self.drive_fl = rev.CANSparkMax(4, rev.CANSparkMax.MotorType.kBrushless)
-        self.drive_fr = rev.CANSparkMax(3, rev.CANSparkMax.MotorType.kBrushless)
-        self.drive_bl = rev.CANSparkMax(2, rev.CANSparkMax.MotorType.kBrushless)
-        self.drive_br = rev.CANSparkMax(1, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_fl = rev.CANSparkMax(DriveConsts.CAN_FL, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_fr = rev.CANSparkMax(DriveConsts.CAN_FR, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_bl = rev.CANSparkMax(DriveConsts.CAN_BL, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_br = rev.CANSparkMax(DriveConsts.CAN_BR, rev.CANSparkMax.MotorType.kBrushless)
 
         # Inversion configuration for the 2022+ WPILib MecanumDrive code, which
         # removed internal inversion for right-side motors.
@@ -71,10 +85,10 @@ class DriveSubsystem(commands2.Subsystem):
         self.pose = wpimath.geometry.Pose2d()
 
         # Wheel locations, noting that Translation2d assumes +x is forward and +y is left.
-        front_left_location = wpimath.geometry.Translation2d(constants.TRACK_HALF_WIDTH, constants.WHEELBASE_HALF_LENGTH)
-        front_right_location = wpimath.geometry.Translation2d(constants.TRACK_HALF_WIDTH, -constants.WHEELBASE_HALF_LENGTH)
-        back_left_location = wpimath.geometry.Translation2d(-constants.TRACK_HALF_WIDTH, constants.WHEELBASE_HALF_LENGTH)
-        back_right_location = wpimath.geometry.Translation2d(-constants.TRACK_HALF_WIDTH, -constants.WHEELBASE_HALF_LENGTH)
+        front_left_location = wpimath.geometry.Translation2d(DriveConsts.TRACK_HALF_WIDTH, DriveConsts.WHEELBASE_HALF_LENGTH)
+        front_right_location = wpimath.geometry.Translation2d(DriveConsts.TRACK_HALF_WIDTH, -DriveConsts.WHEELBASE_HALF_LENGTH)
+        back_left_location = wpimath.geometry.Translation2d(-DriveConsts.TRACK_HALF_WIDTH, DriveConsts.WHEELBASE_HALF_LENGTH)
+        back_right_location = wpimath.geometry.Translation2d(-DriveConsts.TRACK_HALF_WIDTH, -DriveConsts.WHEELBASE_HALF_LENGTH)
 
         # A kinematics object helps convert between wheel speeds and chassis 
         # velocity/rotation and back.
@@ -89,19 +103,13 @@ class DriveSubsystem(commands2.Subsystem):
             self.get_current_distances(), initialPose=self.pose)
 
 
-    # TODO: implement a sendable for telemetry
-    # def initSendable(self, builder):
-    #     """
-    #     Overrides the method inherited from the Sendable class to create a
-    #     system that automatically updates the dashboard.
-    #     """
-    #     builder.setSmartDashboardType('MAKOCommand')
-    #     # builder.addStringProperty('DB/String 0', self.get_heading_string)
-    #     builder.addDoubleProperty('angle', self.gyro.getAngle, None)
+    ###########################################################################
+    # Methods in base classes that we override here                           #
+    ###########################################################################
 
     def periodic(self):
         """
-        This method runs once every 20 msec in all modes (except simulation).  
+        This method runs once every 20 msec in all modes (including simulation).  
         Since we don't want to interfere with various commands that may be 
         running, it is best to only put sensing and telemetry functionality here.
         But the WPILib docs say that subsystem periodic() are called before
@@ -119,20 +127,34 @@ class DriveSubsystem(commands2.Subsystem):
         wpilib.SmartDashboard.putString('DB/String 2', 'y/left    (m): {:5.2f}'.format(self.pose.Y()))
 
     def simulationPeriodic(self):
-        """Similar to periodic(), but for simulation"""
+        """Called in simulation after periodic() to update simulation variables."""
         pass
 
-    #########################################################
-    # Methods to use in commands                            #
-    #########################################################
+    # TODO: implement a sendable for telemetry
+    # def initSendable(self, builder):
+    #     """
+    #     Overrides the method inherited from the Sendable class to create a
+    #     system that automatically updates the dashboard.
+    #     """
+    #     builder.setSmartDashboardType('MAKOCommand')
+    #     # builder.addStringProperty('DB/String 0', self.get_heading_string)
+    #     builder.addDoubleProperty('angle', self.gyro.getAngle, None)
 
-    def drive_field_relative(self, forward: float, right: float, rot_cw: float):
+    ###########################################################################
+    # Methods that create commands                                            #
+    ###########################################################################
+
+    ###########################################################################
+    # Methods to use in commands, either created here or elsewhere            #
+    ###########################################################################
+
+    def drive_field_relative(self, forward: float, left: float, rot_ccw: float):
         """Drive in a direction relative to the field (or the driver assuming the 
            robot starts facing the same direction as the driver is facing).
            :param: forward move away from the driver. (+x direction in Pose)
-           :param: right   move rightward from the driver's perspective. (-y in Pose)
-           :param: rot_cw  rotate the robot clockwise as viewed from above. 
-           (positive = clockwise, though that makes the angle go negative by proper math.)
+           :param: left    move leftward from the driver's perspective. (+y in Pose)
+           :param: rot_ccw positive to rotate the robot counterclockwise as 
+                   viewed from above. 
         """
         heading_degrees = self.pose.rotation().degrees()
         drive_heading = wpimath.geometry.Rotation2d.fromDegrees(-heading_degrees)
@@ -140,13 +162,11 @@ class DriveSubsystem(commands2.Subsystem):
         # driveCartesian's documentation does not match its behavior, at least 
         # with this omni wheel drive.  Forward is OK, but right/left seems inverted,
         # as does the rotation.
-        self.drivetrain.driveCartesian(
-            forward / constants.DRIVE_SLOWER, right / constants.DRIVE_SLOWER, 
-            rot_cw / constants.DRIVE_SLOWER, drive_heading)
+        self.drivetrain.driveCartesian(forward, -left, -rot_ccw, drive_heading)
 
-    #########################################################
-    # Helper methods                                        #
-    #########################################################
+    ###########################################################################
+    # Helper methods                                                          #
+    ###########################################################################
 
     def get_current_distances(self)-> wpimath.kinematics.MecanumDriveWheelPositions:
         """
@@ -161,7 +181,7 @@ class DriveSubsystem(commands2.Subsystem):
         # correct for the difference between MAKO's omni wheels and a true
         # mecanum wheel-based drive.
         # rev_to_m = sqrt(2) * (wheel circumference) / (gear ratio)
-        rev_to_m = 1.414 * math.pi * constants.DRIVE_WHEEL_DIA / constants.DRIVE_GEAR_RATIO
+        rev_to_m = 1.414 * math.pi * DriveConsts.WHEEL_DIA / DriveConsts.GEAR_RATIO
 
         # Fill in the positions.
         pos.frontLeft = self.front_left_encoder.getPosition() * rev_to_m
@@ -180,7 +200,7 @@ class DriveSubsystem(commands2.Subsystem):
 
         # Precompute the factor to convert motor RPM to wheel rim speed in meters/second.
         # rpm_to_m_s = sqrt(2) * (wheel circumference) / (gear ratio) / (60 seconds/minute)
-        rpm_to_m_s = 1.414 * math.pi * constants.DRIVE_WHEEL_DIA / constants.DRIVE_GEAR_RATIO / 60
+        rpm_to_m_s = 1.414 * math.pi * DriveConsts.WHEEL_DIA / DriveConsts.GEAR_RATIO / 60
 
         # Fill in the positions converting to wheel rim speed traveled in meters.
         front_left_speed = self.front_left_encoder.getVelocity() * rpm_to_m_s
