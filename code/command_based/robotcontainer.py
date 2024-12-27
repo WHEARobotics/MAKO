@@ -1,8 +1,11 @@
 import commands2
+import commands2.button
 import wpilib
+import wpimath.geometry
 
+from commands.drivecommands import DriveCommands
 import subsystems.drivesubsystem
-from constants import UserInterface
+from constants import UserInterface, Positions
 
 class RobotContainer:
     """
@@ -18,7 +21,17 @@ class RobotContainer:
         self.drive = subsystems.drivesubsystem.DriveSubsystem()
 
         # Driver controller(s)
-        self.xbox = wpilib.XboxController(2)
+        self.xbox = commands2.button.CommandXboxController(UserInterface.XBOX_PORT)
+
+        # # Create a few locations to drive to.
+        # # 0,0, facing x (forward)
+        # self.home_pose = wpimath.geometry.Pose2d()
+
+        # # 1 meter forward
+        # self.away_pose = wpimath.geometry.Pose2d(
+        #     wpimath.geometry.Translation2d(1.0, 0.0),
+        #     wpimath.geometry.Rotation2d()
+        # )
 
         # Configure button bindings.
         self.configureButtonBindings()
@@ -38,7 +51,12 @@ class RobotContainer:
         )
 
     def configureButtonBindings(self):
-        pass
+        """
+        Helper method to associate commands with controller buttons.
+        """
+        self.xbox.a().onTrue(DriveCommands.drive_goal(Positions.HOME, self.drive))
+        self.xbox.b().onTrue(DriveCommands.drive_goal(Positions.AWAY, self.drive))
+
 
     def getAutonomousCommand(self) -> commands2.Command:
         return None

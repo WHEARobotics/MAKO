@@ -22,9 +22,15 @@ import wpilib
 import wpilib.drive
 import wpimath.geometry
 import wpimath.kinematics
+from wpimath.controller import ProfiledPIDController
+from wpimath.trajectory import TrapezoidProfile
 
 # Import our modules.
 from constants import UserInterface, DriveConsts
+
+#==============================================================================
+# The drive subsystem class
+#==============================================================================
 
 class DriveSubsystem(commands2.Subsystem):
     def __init__(self) -> None:
@@ -72,6 +78,11 @@ class DriveSubsystem(commands2.Subsystem):
         self.front_right_encoder = self.drive_fr.getEncoder()
         self.back_left_encoder = self.drive_bl.getEncoder()
         self.back_right_encoder = self.drive_br.getEncoder()
+        # Reset the encoders as they could be at any position after some runs.
+        self.front_left_encoder.setPosition(0.0)
+        self.front_right_encoder.setPosition(0.0)
+        self.back_left_encoder.setPosition(0.0)
+        self.back_right_encoder.setPosition(0.0)
 
         # ---------------------------------------------------------------------
         # Set up odometry, that is figuring out how far we have driven. Example:
@@ -102,6 +113,38 @@ class DriveSubsystem(commands2.Subsystem):
             self.kinematics, self.gyro.getRotation2d(), 
             self.get_current_distances(), initialPose=self.pose)
 
+        # ---------------------------------------------------------------------
+        # Create PID controllers for each of the three axes (x=forward, y=left,
+        # rotation CCW).  These will help us drive to desired positions.
+        # A Profiled PID constrains the velocity and acceleration.
+        # Tolerances let us determine when we are at the goal position.
+        # ---------------------------------------------------------------------
+
+        # Controller for the x direction (+ forward, away from the driver)
+        self.x_controller = ProfiledPIDController(
+            DriveConsts.PIDX_KP, 0, 0,
+            TrapezoidProfile.Constraints(DriveConsts.HORIZ_MAX_V, DriveConsts.HORIZ_MAX_A)
+        )
+        self.x_controller.setTolerance(DriveConsts.HORIZ_POS_TOL, DriveConsts.HORIZ_VEL_TOL)
+
+        # Controller for the y direction (+ left, viewed by the driver)
+        self.y_controller = ProfiledPIDController(
+            DriveConsts.PIDY_KP, 0, 0,
+            TrapezoidProfile.Constraints(DriveConsts.HORIZ_MAX_V, DriveConsts.HORIZ_MAX_A)
+        )
+        self.y_controller.setTolerance(DriveConsts.HORIZ_POS_TOL, DriveConsts.HORIZ_VEL_TOL)
+
+        # Controller for the rotation direction (+ counterclockwise, viewed from above)
+        # Continuous input enabled so that we can turn left or right, whichever is shorter.
+        self.rot_controller = ProfiledPIDController(
+            DriveConsts.PID_ROT_KP, 0, 0,
+            TrapezoidProfile.Constraints(DriveConsts.ROT_MAX_V, DriveConsts.ROT_MAX_A)
+        )
+        self.rot_controller.setTolerance(DriveConsts.ROT_POS_TOL, DriveConsts.ROT_VEL_TOL)
+        self.rot_controller.enableContinuousInput(-180, 180)
+
+
+
 
     ###########################################################################
     # Methods in base classes that we override here                           #
@@ -125,6 +168,7 @@ class DriveSubsystem(commands2.Subsystem):
         wpilib.SmartDashboard.putString('DB/String 0', 'Angle +=CCW: {:5.1f}'.format(self.pose.rotation().degrees()))
         wpilib.SmartDashboard.putString('DB/String 1', 'x/forward (m): {:5.2f}'.format(self.pose.X()))
         wpilib.SmartDashboard.putString('DB/String 2', 'y/left    (m): {:5.2f}'.format(self.pose.Y()))
+        wpilib.SmartDashboard.putString('DB/String 3', 'FR enc: {:5.2f}'.format(self.front_right_encoder.getPosition()))
 
     def simulationPeriodic(self):
         """Called in simulation after periodic() to update simulation variables."""
@@ -144,8 +188,11 @@ class DriveSubsystem(commands2.Subsystem):
     # Methods that create commands                                            #
     ###########################################################################
 
+    # def drive_to_pose_command(self) -> commands2.Command:
+    #     return self.startEnd()
+
     ###########################################################################
-    # Methods to use in commands, either created here or elsewhere            #
+    # Methods to use in commands, either created in this class or elsewhere   #
     ###########################################################################
 
     def drive_field_relative(self, forward: float, left: float, rot_ccw: float):
@@ -156,13 +203,66 @@ class DriveSubsystem(commands2.Subsystem):
            :param: rot_ccw positive to rotate the robot counterclockwise as 
                    viewed from above. 
         """
+        # TODO: Perhaps extract this to a new get_heading_for_driveCartesian() helper
+        # because we may need it in drive_to_pose(), unless we call this function from it.
+
+        # Negate the reported heading by converting to degrees, negating, and
+        # creating a new Rotation2d object.
         heading_degrees = self.pose.rotation().degrees()
         drive_heading = wpimath.geometry.Rotation2d.fromDegrees(-heading_degrees)
 
         # driveCartesian's documentation does not match its behavior, at least 
         # with this omni wheel drive.  Forward is OK, but right/left seems inverted,
-        # as does the rotation.
+        # as does the rotation, which is why we negated above.
         self.drivetrain.driveCartesian(forward, -left, -rot_ccw, drive_heading)
+
+    def drive_to_goal(self):
+        """
+        Drive from present pose toward another pose on the field.
+        Uses the goal set by set_goal_pose().  Call that method once first.
+        """
+        # Calculate the "gas pedal" values for each axis.
+        present_x = self.pose.X()
+        pid_output_x = self.x_controller.calculate(present_x)
+        clamped_x = clamp(pid_output_x, -1.0, 1.0) # Drive expects between -1 and 1.
+
+        present_y = self.pose.Y()
+        pid_output_y = self.y_controller.calculate(present_y)
+        clamped_y = clamp(pid_output_y, -1.0, 1.0)
+
+        # TODO: rotation
+
+        # Send the values to the drive train.
+        self.drive_field_relative(clamped_x, clamped_y, 0.0)
+
+    def set_goal_pose(self, goal_pose: wpimath.geometry.Pose2d):
+        """
+        Set the goal for upcoming use of PID controllers.
+        Call this before using drive_to_goal().
+        :param: goal_pose The desired pose to drive to.
+        """
+        # Reset the PID loops, because we're starting a new trajectory.
+        self.reset_pids()
+
+        # Extract each axis to set the goal for the corresponding controller.
+        goal_x = goal_pose.X()
+        self.x_controller.setGoal(goal_x)
+        goal_y = goal_pose.Y()
+        self.y_controller.setGoal(goal_y)
+        # TODO: rotation (not as safe to test when tethered)
+
+
+    def is_at_goal(self) -> bool:
+        """
+        Used with PID loops to determine if the robot is at the target/goal
+        position.
+        :returns: True if all three axes (X, Y, rotation) are at the goal.
+        """
+        # Different versions combining different axes for testing:
+        # temp = self.x_controller.atGoal() and self.y_controller.atGoal() and self.rot_controller.atGoal()
+        temp = self.x_controller.atGoal() and self.y_controller.atGoal()
+        return temp
+
 
     ###########################################################################
     # Helper methods                                                          #
@@ -210,4 +310,33 @@ class DriveSubsystem(commands2.Subsystem):
 
         return wpimath.kinematics.MecanumDriveWheelSpeeds(
             front_left_speed, front_right_speed, rear_left_speed, rear_right_speed)
+    
+    def get_heading_continuous_degrees(self) -> float:
+        """
+        Get the present robot heading in degrees, constrained to be between 
+        -180 and +180 degrees, suitable for use with a continuous controller.
+        :returns: heading in degrees within (-180, 180]
+        """
+        angle = self.pose.rotation().degrees()
+        return wpimath.inputModulus(angle, -180, 180)
         
+    def reset_pids(self):
+        """
+        Reset the state of PID controllers. Useful when starting a new command.
+        """
+        # Note that this assumes velocities are zero, and so won't work as well
+        # if we schedule a command while moving.  To optimize, we'll need to 
+        # figure out estimated speeds from odometry and call the version of
+        # reset() with two parameters.
+        self.x_controller.reset(self.pose.X())
+        self.y_controller.reset(self.pose.Y())
+        self.rot_controller.reset(self.pose.rotation().degrees())
+
+
+#==============================================================================
+# Simple helper functions that don't need to be in the class.
+#==============================================================================
+def clamp(val, minval, maxval): 
+    """Returns a number clamped to minval and maxval."""
+    return max(min(val, maxval), minval)
+

@@ -3,13 +3,24 @@ Module of frozen classes that are used as constants by different parts of the
 code.  
 """
 from dataclasses import dataclass
+from wpimath.geometry import Pose2d, Translation2d, Rotation2d
+
+# Positions used in commands
+@dataclass(frozen=True)
+class Positions:
+    """Poses to be used in commands"""
+    HOME = Pose2d() # 0, 0, facing forward
+    AWAY = Pose2d(
+        Translation2d(2.0, 1.0),  # 2.0 meters forward, 1.0 meters to the left of home
+        Rotation2d() # Facing forward
+    )
 
 # User Interface (UI) and control
 @dataclass(frozen=True) # Tells Python that this class's variables can't be changed.
 class UserInterface:
     """Constants related to human interaction."""
     DRIVE_SLOWER = 4 # Factor to divide the drive commands to slow things down for safety.
-
+    XBOX_PORT = 2    # USB port number for the Xbox controller on Rod's computer.
 
 @dataclass(frozen=True)
 class DriveConsts:
@@ -28,6 +39,17 @@ class DriveConsts:
 
     # PID controller constants (gains)
     # Proportional constant only at the moment, all others assumed zero.
-    PIDX_KP = 1    # X dimension PID controller's proportional constant
-    PIDY_KP = 1    # Y dimension PID controller's proportional constant
-    PID_ROT_KP = 1 # Rotation controller's proportional constant.
+    PIDX_KP = 1       # X dimension PID controller's proportional constant
+    PIDY_KP = 1       # Y dimension PID controller's proportional constant
+    PID_ROT_KP = 1    # Rotation controller's proportional constant.
+    # Horizontal (x or y) maxima and tolerances
+    HORIZ_MAX_V = 5   # Maximum velocity in meters/second
+    HORIZ_MAX_A = 10  # Maximum acceleration in meters/second/second
+    HORIZ_POS_TOL = 0.1 # Position tolerance in meters (within this distance is "close enough")
+    HORIZ_VEL_TOL = 0.01 # Velocity tolerance in meters/second
+    # Rotational maxima and tolerances
+    # TODO: Confirm these are radians, radians/sec, radians/sec^2?
+    ROT_MAX_V = 0.1   # Rotational maximum velocity
+    ROT_MAX_A = 0.1   # Rotational maximum acceleration
+    ROT_POS_TOL = 0.1 # Rotational position tolerance
+    ROT_VEL_TOL = 0.1 # Rotational velocity tolerance
