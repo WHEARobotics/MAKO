@@ -11,7 +11,11 @@ class Positions:
     """Poses to be used in commands"""
     HOME = Pose2d() # 0, 0, facing forward
     AWAY = Pose2d(
-        Translation2d(2.0, 1.0),  # 2.0 meters forward, 1.0 meters to the left of home
+        Translation2d(2.0, 0.0),  # 2.0 meters straight forward from home
+        Rotation2d() # Facing forward
+    )
+    SIDE = Pose2d(
+        Translation2d(2.0, 1.0),  # 2.0 meters forward, 1.0 meter to the left of home
         Rotation2d() # Facing forward
     )
 
@@ -21,6 +25,7 @@ class UserInterface:
     """Constants related to human interaction."""
     DRIVE_SLOWER = 4 # Factor to divide the drive commands to slow things down for safety.
     XBOX_PORT = 2    # USB port number for the Xbox controller on Rod's computer.
+
 
 @dataclass(frozen=True)
 class DriveConsts:
@@ -43,8 +48,8 @@ class DriveConsts:
     PIDY_KP = 1       # Y dimension PID controller's proportional constant
     PID_ROT_KP = 1    # Rotation controller's proportional constant.
     # Horizontal (x or y) maxima and tolerances
-    HORIZ_MAX_V = 5   # Maximum velocity in meters/second
-    HORIZ_MAX_A = 10  # Maximum acceleration in meters/second/second
+    HORIZ_MAX_V = 1   # Maximum velocity in meters/second
+    HORIZ_MAX_A = 2  # Maximum acceleration in meters/second/second
     HORIZ_POS_TOL = 0.1 # Position tolerance in meters (within this distance is "close enough")
     HORIZ_VEL_TOL = 0.01 # Velocity tolerance in meters/second
     # Rotational maxima and tolerances

@@ -144,8 +144,6 @@ class DriveSubsystem(commands2.Subsystem):
         self.rot_controller.enableContinuousInput(-180, 180)
 
 
-
-
     ###########################################################################
     # Methods in base classes that we override here                           #
     ###########################################################################
@@ -184,6 +182,7 @@ class DriveSubsystem(commands2.Subsystem):
     #     # builder.addStringProperty('DB/String 0', self.get_heading_string)
     #     builder.addDoubleProperty('angle', self.gyro.getAngle, None)
 
+
     ###########################################################################
     # Methods that create commands                                            #
     ###########################################################################
@@ -203,9 +202,6 @@ class DriveSubsystem(commands2.Subsystem):
            :param: rot_ccw positive to rotate the robot counterclockwise as 
                    viewed from above. 
         """
-        # TODO: Perhaps extract this to a new get_heading_for_driveCartesian() helper
-        # because we may need it in drive_to_pose(), unless we call this function from it.
-
         # Negate the reported heading by converting to degrees, negating, and
         # creating a new Rotation2d object.
         heading_degrees = self.pose.rotation().degrees()

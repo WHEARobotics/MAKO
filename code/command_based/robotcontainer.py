@@ -3,9 +3,10 @@ import commands2.button
 import wpilib
 import wpimath.geometry
 
+from constants import UserInterface, Positions
+from commands.autos import Autos
 from commands.drivecommands import DriveCommands
 import subsystems.drivesubsystem
-from constants import UserInterface, Positions
 
 class RobotContainer:
     """
@@ -23,21 +24,12 @@ class RobotContainer:
         # Driver controller(s)
         self.xbox = commands2.button.CommandXboxController(UserInterface.XBOX_PORT)
 
-        # # Create a few locations to drive to.
-        # # 0,0, facing x (forward)
-        # self.home_pose = wpimath.geometry.Pose2d()
-
-        # # 1 meter forward
-        # self.away_pose = wpimath.geometry.Pose2d(
-        #     wpimath.geometry.Translation2d(1.0, 0.0),
-        #     wpimath.geometry.Rotation2d()
-        # )
-
         # Configure button bindings.
         self.configureButtonBindings()
 
         # Configure default commands.
-        # Set the drive to use the xbox controller by default.
+        # Set the drive system to use the xbox controller when no other drive
+        # command is scheduled.
         self.drive.setDefaultCommand(
             commands2.RunCommand(
                 lambda: self.drive.drive_field_relative(
@@ -59,4 +51,8 @@ class RobotContainer:
 
 
     def getAutonomousCommand(self) -> commands2.Command:
-        return None
+        """
+        Helper method to select which autonomous routine to run this time.
+        :returns: the chosen autonomous command.
+        """
+        return Autos.side_step(self.drive)
