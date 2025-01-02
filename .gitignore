@@ -18,3 +18,6 @@ pip_cache/
 ## robotpy deploy and install configurations (no need to version control)
 .deploy_cfg
 .installer_config
+
+## CTRE sim data files
+*ext.dat
