@@ -18,9 +18,7 @@ echo ===========================================================================
 cd %USERPROFILE%\Desktop\MAKO
 
 :: Activate the virtual environment set up for robotpy.
-poetry env activate > temp.bat
-call temp.bat
-del temp.bat
+call .venv\Scripts\activate.bat
 
 :: Stop in a command prompt.
 cmd /k

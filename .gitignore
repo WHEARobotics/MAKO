@@ -21,3 +21,6 @@ pip_cache/
 
 ## CTRE sim data files
 *ext.dat
+
+## Virtual environments
+.venv/*

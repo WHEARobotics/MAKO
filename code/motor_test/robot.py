@@ -1,5 +1,6 @@
 import wpilib
 import rev
+import commands2
 import phoenix6
 
 class Myrobot(wpilib.TimedRobot):
@@ -19,9 +20,12 @@ class Myrobot(wpilib.TimedRobot):
         #----------------------------------------------------------------------
         # Motor controllers
 
-        # MAKO's left-side motor controllers, SparkMaxes
-        # self.motor2 = rev.CANSparkMax(2, rev.CANSparkMax.MotorType.kBrushless)
-        # self.motor4 = rev.CANSparkMax(4, rev.CANSparkMax.MotorType.kBrushless)
+        # MAKO's right-side motor controllers, SparkMaxes
+        # self.motor1 = rev.SparkMax(1, rev.SparkMax.MotorType.kBrushless)
+        # self.motor3 = rev.SparkMax(3, rev.SparkMax.MotorType.kBrushless)
+        # left side
+        # self.motor2 = rev.SparkMax(2, rev.SparkMax.MotorType.kBrushless)
+        # self.motor4 = rev.SparkMax(4, rev.SparkMax.MotorType.kBrushless)
 
         # Test a Kraken
         self.kraken = phoenix6.hardware.TalonFX(0)
@@ -90,7 +94,7 @@ class Myrobot(wpilib.TimedRobot):
 
     def disabledPeriodic(self):
         if self.print_timer.advanceIfElapsed(0.2):
-            wpilib.SmartDashboard.putString('DB/String 0', 'rotations: {:5.1f}'.format(self.kraken.get_position().value))
+            wpilib.SmartDashboard.putString('DB/String 0', 'foo')# 'rotations: {:5.1f}'.format(self.kraken.get_position().value))
 
     def disabledExit(self):
         pass
@@ -113,8 +117,11 @@ class Myrobot(wpilib.TimedRobot):
         right = self.xbox.getRightY()
 
         # Command motor operation.
-        # self.motor2.set(left)
-        # self.motor4.set(right)
+        # self.motor1.set(right)
+        # self.motor3.set(left)
+
+        # self.motor2.set(0.0)
+        # self.motor4.set(0.0)
 
         # Kraken, either brake or move to a position
         desired_rotations = right * 5
@@ -129,7 +136,7 @@ class Myrobot(wpilib.TimedRobot):
             self.kraken.set_control(self.brake_request)
 
         if self.print_timer.advanceIfElapsed(0.2):
-            wpilib.SmartDashboard.putString('DB/String 0', 'rotations: {:5.1f}'.format(self.kraken.get_position().value))
+            wpilib.SmartDashboard.putString('DB/String 0', 'foo') #'rotations: {:5.1f}'.format(self.kraken.get_position().value))
 
 
     def teleopExit(self):
