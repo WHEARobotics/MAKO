@@ -42,31 +42,31 @@ class MAKORobot(wpilib.TimedRobot):
         self.xbox = wpilib.XboxController(2)
 
         # Create and configure the drive train controllers and motors, all Rev. Robotics SparkMaxes driving NEO motors.
-        self.drive_rr = rev.CANSparkMax(1, rev.CANSparkMax.MotorType.kBrushless)
-        self.drive_rf = rev.CANSparkMax(3, rev.CANSparkMax.MotorType.kBrushless)
-        self.drive_lr = rev.CANSparkMax(2, rev.CANSparkMax.MotorType.kBrushless)
-        self.drive_lf = rev.CANSparkMax(4, rev.CANSparkMax.MotorType.kBrushless)
-        self.elevator = rev.CANSparkMax(5, rev.CANSparkMax.MotorType.kBrushless)
+        self.drive_br = rev.SparkMax(1, rev.SparkMax.MotorType.kBrushless)
+        self.drive_fr = rev.SparkMax(3, rev.SparkMax.MotorType.kBrushless)
+        self.drive_bl = rev.SparkMax(2, rev.SparkMax.MotorType.kBrushless)
+        self.drive_fl = rev.SparkMax(4, rev.SparkMax.MotorType.kBrushless)
+        self.elevator = rev.SparkMax(5, rev.SparkMax.MotorType.kBrushless)
 
-        # Inversion configuration for the 2022 WPILib MecanumDrive code, which removed internal inversion for right-side motors.
-        self.drive_rr.setInverted(True) # 
-        self.drive_rf.setInverted(True) # 
-        self.drive_lr.setInverted(False) # 
-        self.drive_lf.setInverted(False) # 
-        self.elevator.setInverted(False)
+        # Get a configuration object.
+        config = rev.SparkMaxConfig()
+        config.inverted(False)
+        config.IdleMode(rev.SparkMax.IdleMode.kCoast)
 
-        # Set all motors to coast mode when idle/neutral.
-        # Note that this is "IdleMode" rather than the "NeutralMode" nomenclature used by CTRE CANTalons.
-        self.drive_rr.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_rf.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_lr.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
-        self.drive_lf.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
-        self.elevator.setIdleMode(rev.CANSparkMax.IdleMode.kCoast)
+        # Configure left side and elevator as non-inverted.
+        self.drive_fl.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+        self.drive_bl.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+        self.elevator.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+
+        # Invert and apply to the right side.
+        config.inverted(True)
+        self.drive_fr.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+        self.drive_br.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
 
         # Now that we have motors, we can set up an object that will handle mecanum drive.
         # From the documentation, North, East, and Down are the three axes.
         # Positive X is forward, Positive Y is right, Positive Z is down.  Clockwise rotation around Z (as viewed from ___) is positive.
-        self.drivetrain = wpilib.drive.MecanumDrive(self.drive_lf, self.drive_lr, self.drive_rf, self.drive_rr)
+        self.drivetrain = wpilib.drive.MecanumDrive(self.drive_fl, self.drive_bl, self.drive_fr, self.drive_br)
 
         # Initialize elevator control
         self.elev_position = self.elevator.getEncoder()
