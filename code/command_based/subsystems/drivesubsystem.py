@@ -163,8 +163,8 @@ class DriveSubsystem(commands2.Subsystem):
         # Send the heading angle to the dashboard
         # TODO: implement shuffleboard
         wpilib.SmartDashboard.putString('DB/String 0', 'Angle +=CCW: {:5.1f}'.format(self.pose.rotation().degrees()))
-        wpilib.SmartDashboard.putString('DB/String 1', 'x/forward (m): {:5.2f}'.format(self.pose.X()))
-        wpilib.SmartDashboard.putString('DB/String 2', 'y/left    (m): {:5.2f}'.format(self.pose.Y()))
+        wpilib.SmartDashboard.putString('DB/String 1', 'x/forward (in): {:5.2f}'.format(self.pose.X()))
+        wpilib.SmartDashboard.putString('DB/String 2', 'y/left    (in): {:5.2f}'.format(self.pose.Y()))
         wpilib.SmartDashboard.putString('DB/String 3', 'FR enc: {:5.2f}'.format(self.front_right_encoder.getPosition()))
 
     def simulationPeriodic(self):
@@ -277,18 +277,11 @@ class DriveSubsystem(commands2.Subsystem):
         # Start with an empty positions object that will be returned.
         pos = wpimath.kinematics.MecanumDriveWheelPositions()
 
-        # Precompute the factor to convert motor revolutions to wheel rim 
-        # distance traveled in meters.  The factor 1.414 = sqrt(2) is to
-        # correct for the difference between MAKO's omni wheels and a true
-        # mecanum wheel-based drive.
-        # rev_to_m = sqrt(2) * (wheel circumference) / (gear ratio)
-        rev_to_m = 1.414 * math.pi * DriveConsts.WHEEL_DIA / DriveConsts.GEAR_RATIO
-
         # Fill in the positions.
-        pos.frontLeft = self.front_left_encoder.getPosition() * rev_to_m
-        pos.frontRight = self.front_right_encoder.getPosition() * rev_to_m
-        pos.rearLeft = self.back_left_encoder.getPosition() * rev_to_m
-        pos.rearRight = self.back_right_encoder.getPosition() * rev_to_m
+        pos.frontLeft = motor_rev_to_inches(self.front_left_encoder.getPosition())
+        pos.frontRight = motor_rev_to_inches(self.front_right_encoder.getPosition())
+        pos.rearLeft = motor_rev_to_inches(self.back_left_encoder.getPosition())
+        pos.rearRight = motor_rev_to_inches(self.back_right_encoder.getPosition())
 
         return pos
 
@@ -298,20 +291,16 @@ class DriveSubsystem(commands2.Subsystem):
         Returns the current speeds measured by the drivetrain.
         :returns: MecanumDriveWheelSpeeds with rim speeds in meters/second.
         """
-
-        # Precompute the factor to convert motor RPM to wheel rim speed in meters/second.
-        # rpm_to_m_s = sqrt(2) * (wheel circumference) / (gear ratio) / (60 seconds/minute)
-        rpm_to_m_s = 1.414 * math.pi * DriveConsts.WHEEL_DIA / DriveConsts.GEAR_RATIO / 60
-
-        # Fill in the positions converting to wheel rim speed traveled in meters.
-        front_left_speed = self.front_left_encoder.getVelocity() * rpm_to_m_s
-        front_right_speed = self.front_right_encoder.getVelocity() * rpm_to_m_s
-        rear_left_speed = self.back_left_encoder.getVelocity() * rpm_to_m_s
-        rear_right_speed = self.back_right_encoder.getVelocity() * rpm_to_m_s
+        # Fill in the positions converting to wheel rim speed traveled in inches/second.
+        front_left_speed  = motor_rpm_to_inches_per_sec(self.front_left_encoder.getVelocity())
+        front_right_speed = motor_rpm_to_inches_per_sec(self.front_right_encoder.getVelocity())
+        rear_left_speed   = motor_rpm_to_inches_per_sec(self.back_left_encoder.getVelocity())
+        rear_right_speed  = motor_rpm_to_inches_per_sec(self.back_right_encoder.getVelocity())
 
         return wpimath.kinematics.MecanumDriveWheelSpeeds(
             front_left_speed, front_right_speed, rear_left_speed, rear_right_speed)
     
+
     def get_heading_continuous_degrees(self) -> float:
         """
         Get the present robot heading in degrees, constrained to be between 
@@ -340,4 +329,16 @@ class DriveSubsystem(commands2.Subsystem):
 def clamp(val, minval, maxval): 
     """Returns a number clamped to minval and maxval."""
     return max(min(val, maxval), minval)
+
+def motor_rev_to_inches(revs: float) -> float:
+    """
+    Converts motor position in revolutions to wheel rim inches.
+    """
+    return revs * DriveConsts.REV_TO_IN
+
+def motor_rpm_to_inches_per_sec(rpm: float) -> float:
+    """
+    Converts motor speed in revolutions/minute to wheel rim inches/second.
+    """
+    return rpm * DriveConsts.RPM_TO_INCHES_S
 
