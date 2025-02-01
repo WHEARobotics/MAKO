@@ -1,9 +1,8 @@
 import commands2
 import commands2.button
-import wpilib
-import wpimath.geometry
 
-from constants import UserInterface, Positions
+from constants.operatorinterfaceconstants import UserInterface
+from constants.fieldconstants import Positions
 from commands.autos import Autos
 from commands.drivecommands import DriveCommands
 import subsystems.drivesubsystem

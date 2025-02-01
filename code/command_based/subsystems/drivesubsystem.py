@@ -26,7 +26,7 @@ from wpimath.controller import ProfiledPIDController
 from wpimath.trajectory import TrapezoidProfile
 
 # Import our modules.
-from constants import UserInterface, DriveConsts
+from constants.driveconstants import DriveConsts
 
 #==============================================================================
 # The drive subsystem class

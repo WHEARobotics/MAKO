@@ -3,7 +3,7 @@ import commands2.cmd
 
 import subsystems.drivesubsystem
 from commands.drivecommands import DriveCommands
-from constants import Positions
+from constants.fieldconstants import Positions
 
 class Autos:
     """Class to hold autonomous command factories"""
