@@ -225,10 +225,13 @@ class DriveSubsystem(commands2.Subsystem):
         pid_output_y = self.y_controller.calculate(present_y)
         clamped_y = clamp(pid_output_y, -1.0, 1.0)
 
-        # TODO: rotation
+        present_rot = self.pose.rotation().degrees()
+        present_rot = wpimath.inputModulus(present_rot, -180, 180)
+        pid_output_rot = self.rot_controller.calculate(present_rot)
+        clamped_rot = clamp(pid_output_rot, -1.0, 1.0)
 
         # Send the values to the drive train.
-        self.drive_field_relative(clamped_x, clamped_y, 0.0)
+        self.drive_field_relative(clamped_x, clamped_y, clamped_rot)
 
     def set_goal_pose(self, goal_pose: wpimath.geometry.Pose2d):
         """
@@ -244,7 +247,10 @@ class DriveSubsystem(commands2.Subsystem):
         self.x_controller.setGoal(goal_x)
         goal_y = goal_pose.Y()
         self.y_controller.setGoal(goal_y)
-        # TODO: rotation (not as safe to test when tethered)
+
+        goal_rot = goal_pose.rotation().degrees()
+        goal_rot = wpimath.inputModulus(goal_rot, -180, 180)
+        self.rot_controller.setGoal(goal_rot)
 
 
     def is_at_goal(self) -> bool:
@@ -254,8 +260,8 @@ class DriveSubsystem(commands2.Subsystem):
         :returns: True if all three axes (X, Y, rotation) are at the goal.
         """
         # Different versions combining different axes for testing:
-        # temp = self.x_controller.atGoal() and self.y_controller.atGoal() and self.rot_controller.atGoal()
-        temp = self.x_controller.atGoal() and self.y_controller.atGoal()
+        temp = self.x_controller.atGoal() and self.y_controller.atGoal() and self.rot_controller.atGoal()
+        # temp = self.x_controller.atGoal() and self.y_controller.atGoal()
         return temp
 
 

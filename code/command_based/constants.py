@@ -18,6 +18,10 @@ class Positions:
         Translation2d(2.0, 1.0),  # 2.0 meters forward, 1.0 meter to the left of home
         Rotation2d() # Facing forward
     )
+    FACE_NW = Pose2d(
+        Translation2d(0.0, 0.0),  # 0.0 meters forward, 0.0 meter to the left of home
+        Rotation2d().fromDegrees(45) # Facing forward
+    )
 
 # User Interface (UI) and control
 @dataclass(frozen=True) # Tells Python that this class's variables can't be changed.
@@ -44,17 +48,19 @@ class DriveConsts:
 
     # PID controller constants (gains)
     # Proportional constant only at the moment, all others assumed zero.
-    PIDX_KP = 1       # X dimension PID controller's proportional constant
-    PIDY_KP = 1       # Y dimension PID controller's proportional constant
-    PID_ROT_KP = 1    # Rotation controller's proportional constant.
+    PIDX_KP = 1.0       # X dimension PID controller's proportional constant
+    PIDY_KP = 1.0       # Y dimension PID controller's proportional constant
+    PID_ROT_KP = 2.0/180.0    # Rotation controller's proportional constant.
     # Horizontal (x or y) maxima and tolerances
     HORIZ_MAX_V = 1   # Maximum velocity in meters/second
     HORIZ_MAX_A = 2  # Maximum acceleration in meters/second/second
     HORIZ_POS_TOL = 0.1 # Position tolerance in meters (within this distance is "close enough")
     HORIZ_VEL_TOL = 0.01 # Velocity tolerance in meters/second
+
     # Rotational maxima and tolerances
+    # Degrees, degrees/second, and degrees/sec^2
     # TODO: Confirm these are radians, radians/sec, radians/sec^2?
-    ROT_MAX_V = 0.1   # Rotational maximum velocity
-    ROT_MAX_A = 0.1   # Rotational maximum acceleration
-    ROT_POS_TOL = 0.1 # Rotational position tolerance
-    ROT_VEL_TOL = 0.1 # Rotational velocity tolerance
+    ROT_MAX_V = 40.0   # Rotational maximum velocity
+    ROT_MAX_A = 20.0   # Rotational maximum acceleration
+    ROT_POS_TOL = 5.0 # Rotational position tolerance
+    ROT_VEL_TOL = 1.0 # Rotational velocity tolerance

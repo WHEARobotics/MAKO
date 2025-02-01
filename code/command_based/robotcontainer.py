@@ -47,7 +47,7 @@ class RobotContainer:
         Helper method to associate commands with controller buttons.
         """
         self.xbox.a().onTrue(DriveCommands.drive_goal(Positions.HOME, self.drive))
-        self.xbox.b().onTrue(DriveCommands.drive_goal(Positions.AWAY, self.drive))
+        self.xbox.b().onTrue(DriveCommands.drive_goal(Positions.FACE_NW, self.drive))
 
 
     def getAutonomousCommand(self) -> commands2.Command:
