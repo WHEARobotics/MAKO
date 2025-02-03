@@ -68,7 +68,7 @@ class ElevatorSubsystem(commands2.Subsystem):
         # Make sure we initialize the encoder properly.
         self.initialized: bool = False
         if self.bottom_limit.get():
-            self.encoder.setPosition(0.0)
+            self.encoder.setPosition(_inches_to_motor_rot(ElevatorConsts.HOME))
             self.initialized = True
 
 
@@ -82,7 +82,8 @@ class ElevatorSubsystem(commands2.Subsystem):
         """
         # Send data to the dashboard
         # TODO: implement shuffleboard
-        wpilib.SmartDashboard.putString('DB/String 4', 'elev: {:5.2f}'.format(self.encoder.getPosition()))
+        height = _motor_rot_to_inches(self.encoder.getPosition())
+        wpilib.SmartDashboard.putString('DB/String 4', 'elev: {:5.2f}"'.format(height))
 
     def simulationPeriodic(self):
         """Called in simulation after periodic() to update simulation variables."""
@@ -110,7 +111,7 @@ class ElevatorSubsystem(commands2.Subsystem):
             self.motor.set(-0.1)
             if self.bottom_limit.get():
                 self.motor.set(0.0)
-                self.encoder.setPosition(0.0)
+                self.encoder.setPosition(_inches_to_motor_rot(ElevatorConsts.HOME))
                 self.initialized = True
 
     def is_at_goal(self) -> bool:
@@ -125,8 +126,8 @@ class ElevatorSubsystem(commands2.Subsystem):
 #==============================================================================
 def _motor_rot_to_inches(rot: float) -> float:
     """Convert motor shaft rotations to height in inches."""
-    return rot * ElevatorConsts.SPROCKET_CIRC / ElevatorConsts.GEAR_RATIO
+    return rot * ElevatorConsts.SPROCKET_CIRC * ElevatorConsts.RIG / ElevatorConsts.GEAR_RATIO + ElevatorConsts.HEIGHT_OFFSET
 
 def _inches_to_motor_rot(height: float) -> float:
     """Convert height to motor shaft position in rotations."""
-    return height * ElevatorConsts.GEAR_RATIO / ElevatorConsts.SPROCKET_CIRC
+    return (height - ElevatorConsts.HEIGHT_OFFSET) * ElevatorConsts.GEAR_RATIO / ElevatorConsts.SPROCKET_CIRC / ElevatorConsts.RIG

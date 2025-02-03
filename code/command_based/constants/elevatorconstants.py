@@ -16,8 +16,9 @@ class ElevatorConsts:
     # Mechanical constants
     GEAR_RATIO: float = 27
     SPROCKET_CIRC: float = 42 * 5 / 25.4 # Inches (42 teeth * 5 mm pitch/tooth / 25.4 mm/in)
+    RIG: float =            2.0 # Rigging design causes the second stage to move at 2x the rate of first stage.
     HEIGHT_OFFSET: float = 10.5 # Height of the second stage's lower crosspiece (top surface), in inches.
     
-    # Heights in inches
-    HOME: float = 0.0
-    MID: float = 12.0
+    # Heights in inches (lowest is 10.5, highest is ~55.5)
+    HOME: float = 10.5 # Elevator at its lowest position.
+    MID: float  = 34.5
