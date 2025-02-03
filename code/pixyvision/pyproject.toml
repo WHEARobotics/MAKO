@@ -22,4 +22,4 @@ robotpy_extras = [
     # "xrp",
 ]
 
-requires = ["phoenix6==25.1.0", "robotpy-rev==2025.0.1"]
+requires = ["phoenix6==25.1.0", "robotpy-rev==2025.0.2"]
