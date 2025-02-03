@@ -3,9 +3,12 @@ import commands2.button
 
 from constants.operatorinterfaceconstants import UserInterface
 from constants.fieldconstants import Positions
+from constants.elevatorconstants import ElevatorConsts
 from commands.autos import Autos
 from commands.drivecommands import DriveCommands
+from commands.elevatorcommands import ElevatorCommands
 import subsystems.drivesubsystem
+import subsystems.elevatorsubsystem
 
 class RobotContainer:
     """
@@ -19,6 +22,7 @@ class RobotContainer:
         """The container for the robot.  Contains subsystems, I/O devices, and commands."""
         # Robot's subsystems
         self.drive = subsystems.drivesubsystem.DriveSubsystem()
+        self.elevator = subsystems.elevatorsubsystem.ElevatorSubsystem()
 
         # Driver controller(s)
         self.xbox = commands2.button.CommandXboxController(UserInterface.XBOX_PORT)
@@ -41,12 +45,23 @@ class RobotContainer:
             )
         )
 
+        # Default for the elevator is to move to the last goal that had been set,
+        # basically, holding it in place.
+        self.elevator.setDefaultCommand(
+            commands2.RunCommand(
+                self.elevator.move_to_goal,
+                self.elevator,
+            )
+        )
+
     def configureButtonBindings(self):
         """
         Helper method to associate commands with controller buttons.
         """
         self.xbox.a().onTrue(DriveCommands.drive_goal(Positions.HOME, self.drive))
         self.xbox.b().onTrue(DriveCommands.drive_goal(Positions.FACE_NW, self.drive))
+        self.xbox.leftBumper().onTrue(ElevatorCommands.move_goal(ElevatorConsts.HOME, self.elevator))
+        self.xbox.rightBumper().onTrue(ElevatorCommands.move_goal(ElevatorConsts.MID, self.elevator))
 
 
     def getAutonomousCommand(self) -> commands2.Command:
