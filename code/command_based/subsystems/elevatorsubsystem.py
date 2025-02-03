@@ -59,13 +59,18 @@ class ElevatorSubsystem(commands2.Subsystem):
         self.controller = self.motor.getClosedLoopController()
 
         self.encoder = self.motor.getEncoder()
-        self.encoder.setPosition(0)
 
-        # Set the state tracking.
-        # TODO: Improve the initialization.
-        # Position in rotations we are trying to get to.
+        self.bottom_limit = self.motor.getReverseLimitSwitch()
+
+        # Give an initial position in rotations we are trying to get to.
         self.goal_pos = _inches_to_motor_rot(ElevatorConsts.HOME)
-        self.initialized: bool = True
+
+        # Make sure we initialize the encoder properly.
+        self.initialized: bool = False
+        if self.bottom_limit.get():
+            self.encoder.setPosition(0.0)
+            self.initialized = True
+
 
     ###########################################################################
     # Methods in base classes that we override here                           #
@@ -98,8 +103,15 @@ class ElevatorSubsystem(commands2.Subsystem):
 
     def move_to_goal(self):
         """Move toward the goal position"""
-        # self.motor.set(rev.SparkMax.ControlType.kPosition, self.goal_pos)
-        self.controller.setReference(self.goal_pos, rev.SparkMax.ControlType.kPosition)
+        if self.initialized:
+            self.controller.setReference(self.goal_pos, rev.SparkMax.ControlType.kPosition)
+        else:
+            # If not initialized, move downward slowly to find the bottom.
+            self.motor.set(-0.1)
+            if self.bottom_limit.get():
+                self.motor.set(0.0)
+                self.encoder.setPosition(0.0)
+                self.initialized = True
 
     def is_at_goal(self) -> bool:
         False # Never end unless interrupted.
