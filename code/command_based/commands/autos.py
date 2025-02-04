@@ -20,3 +20,9 @@ class Autos:
             DriveCommands.drive_goal(Positions.SIDE, drive)
         )
     
+    def forward(drive: subsystems.drivesubsystem.DriveSubsystem):
+        """Autonomous routine that drives forward"""
+        return commands2.cmd.sequence(
+            DriveCommands.drive_goal(Positions.AWAY, drive)
+        )
+    

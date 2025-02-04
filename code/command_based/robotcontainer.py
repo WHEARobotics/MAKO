@@ -1,5 +1,7 @@
 import commands2
 import commands2.button
+from wpilib import SendableChooser,SmartDashboard
+from wpilib.shuffleboard import Shuffleboard, BuiltInWidgets
 
 from constants.operatorinterfaceconstants import UserInterface
 from constants.fieldconstants import Positions
@@ -53,6 +55,23 @@ class RobotContainer:
                 self.elevator,
             )
         )
+
+        
+        #Make a tab in shuffle board
+        self.tab = Shuffleboard.getTab("Test")
+
+        #Auto chooser
+        self.auto_chooser = SendableChooser()
+        self.chooser = SendableChooser()
+
+        self.auto_chooser.setDefaultOption("Side Step", 1)  #Autos.side_step(self.drive)
+        
+        #Add options
+        self.auto_chooser.addOption("Drive Forward", 2) # Autos.forward(self.drive)
+
+        #Add chooser to tab
+        self.tab.add("Auto Commmand Selector", self.auto_chooser)
+        SmartDashboard.putData("Auto Commmand Selector", self.auto_chooser)
 
     def configureButtonBindings(self):
         """
