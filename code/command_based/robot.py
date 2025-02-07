@@ -23,7 +23,7 @@ class CommandRobot(commands2.TimedCommandRobot): # Inheriting from TimedCommandR
         pass
     
     def disabledPeriodic(self) -> None:
-        pass
+        self.autonomousCommand = self.container.getAutonomousCommand()
     
     def autonomousInit(self) -> None:
         self.autonomousCommand = self.container.getAutonomousCommand()

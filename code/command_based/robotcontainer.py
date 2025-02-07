@@ -9,6 +9,7 @@ from constants.elevatorconstants import ElevatorConsts
 from commands.autos import Autos
 from commands.drivecommands import DriveCommands
 from commands.elevatorcommands import ElevatorCommands
+from constants.autoconstants import AutoConsts
 import subsystems.drivesubsystem
 import subsystems.elevatorsubsystem
 
@@ -62,15 +63,13 @@ class RobotContainer:
 
         #Auto chooser
         self.auto_chooser = SendableChooser()
-        self.chooser = SendableChooser()
 
-        self.auto_chooser.setDefaultOption("Side Step", 1)  #Autos.side_step(self.drive)
+        self.auto_chooser.setDefaultOption("Side Step", AutoConsts.SIDE_STEP)  #Autos.side_step(self.drive)
         
         #Add options
-        self.auto_chooser.addOption("Drive Forward", 2) # Autos.forward(self.drive)
+        self.auto_chooser.addOption("Drive Forward", AutoConsts.FORWARD) # Autos.forward(self.drive)
 
         #Add chooser to tab
-        self.tab.add("Auto Commmand Selector", self.auto_chooser)
         SmartDashboard.putData("Auto Commmand Selector", self.auto_chooser)
 
     def configureButtonBindings(self):
@@ -88,4 +87,10 @@ class RobotContainer:
         Helper method to select which autonomous routine to run this time.
         :returns: the chosen autonomous command.
         """
-        return Autos.side_step(self.drive)
+        auto_reader = self.auto_chooser.getSelected()
+        
+        if auto_reader == AutoConsts.SIDE_STEP:
+            return Autos.side_step(self.drive)
+        elif auto_reader == AutoConsts.FORWARD:
+            return Autos.forward(self.drive)
+        
