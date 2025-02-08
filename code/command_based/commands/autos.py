@@ -4,6 +4,9 @@ import commands2.cmd
 import subsystems.drivesubsystem
 from commands.drivecommands import DriveCommands
 from constants.fieldconstants import Positions
+from elevatorcommands import ElevatorCommands
+from constants.elevatorconstants import ElevatorConts
+import subsystems.elevatorsubsystem
 
 class Autos:
     """Class to hold autonomous command factories"""
@@ -25,4 +28,10 @@ class Autos:
         return commands2.cmd.sequence(
             DriveCommands.drive_goal(Positions.AWAY, drive)
         )
-    
+    def forward_elevator(drive: subsystems.drivesubsystem.DriveSubsystem, elevator: subsystems.elevatorsubsystem.ElevatorSubsystem):
+        return commands2.cmd.parallel(
+            DriveCommands.drive_goal(Positions.AWAY, drive),
+            ElevatorCommands.move_goal(ElevatorConts.MId, elevator)
+        )
+           
+        

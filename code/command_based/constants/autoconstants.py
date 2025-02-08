@@ -4,4 +4,4 @@ from dataclasses import dataclass
 class AutoConsts: 
     SIDE_STEP = 1
     FORWARD = 2
-    
+    FORWARD_ELEVATOR = 3
