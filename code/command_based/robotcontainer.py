@@ -69,6 +69,8 @@ class RobotContainer:
         #Add options
         self.auto_chooser.addOption("Drive Forward", AutoConsts.FORWARD) # Autos.forward(self.drive)
 
+        self.auto_chooser.addOption("Drive Forward + elevator mid", AutoConsts.FORWARD_ELEVATOR) # Autos.forward_elevator(self.drive, self.elevator)
+
         #Add chooser to tab
         SmartDashboard.putData("Auto Commmand Selector", self.auto_chooser)
 
@@ -93,4 +95,6 @@ class RobotContainer:
             return Autos.side_step(self.drive)
         elif auto_reader == AutoConsts.FORWARD:
             return Autos.forward(self.drive)
+        elif auto_reader == AutoConsts.FORWARD_ELEVATOR:
+            return Autos.forward_elevator(self.drive, self.elevator)
         
