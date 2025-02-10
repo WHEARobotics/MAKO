@@ -30,8 +30,8 @@ class Autos:
         )
     def forward_elevator(drive: subsystems.drivesubsystem.DriveSubsystem, elevator: subsystems.elevatorsubsystem.ElevatorSubsystem):
         return commands2.cmd.parallel(
-            DriveCommands.drive_goal(Positions.AWAY, drive),
-            ElevatorCommands.move_goal(ElevatorConsts.MID, elevator)
+            ElevatorCommands.move_goal(ElevatorConsts.MID, elevator),
+            DriveCommands.drive_goal(Positions.AWAY, drive)
         )
            
         
