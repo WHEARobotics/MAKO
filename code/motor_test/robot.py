@@ -15,25 +15,25 @@ class Myrobot(wpilib.TimedRobot):
 
         #----------------------------------------------------------------------
         # Human interface
-        self.xbox = wpilib.XboxController(2)
+        self.xbox = wpilib.XboxController(1)
 
         #----------------------------------------------------------------------
         # Motor controllers
 
         # MAKO's right-side motor controllers, SparkMaxes
-        # self.motor1 = rev.SparkMax(1, rev.SparkMax.MotorType.kBrushless)
+        self.motor1 = rev.SparkMax(10, rev.SparkMax.MotorType.kBrushless)
         # self.motor3 = rev.SparkMax(3, rev.SparkMax.MotorType.kBrushless)
         # left side
         # self.motor2 = rev.SparkMax(2, rev.SparkMax.MotorType.kBrushless)
         # self.motor4 = rev.SparkMax(4, rev.SparkMax.MotorType.kBrushless)
 
         # Test a Kraken
-        self.kraken = phoenix6.hardware.TalonFX(0)
+        # self.kraken = phoenix6.hardware.TalonFX(0)
 
         # Note that "set_position" does not _command_ a position, it tells
         # the Kraken that its encoder should read the given position at
         # its present location.
-        self.kraken.set_position(0)
+        # self.kraken.set_position(0)
 
         #----------------------------------------------------------------------
         # Set up Kraken's configuration by first getting a default 
@@ -66,27 +66,27 @@ class Myrobot(wpilib.TimedRobot):
         # Apply the configuration. Interestingly, CTRE's example has code that
         # attempts configuration 5 times.  This suggests that configuration
         # doesn't always take, which is kind of dismaying.
-        status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
-        for _ in range(0, 5):
-            # Apply configuration and check its status.
-            status = self.kraken.configurator.apply(configuration)
-            if status.is_ok():
-                break
-        if not status.is_ok():
-            print(f'Could not apply configs, error code: {status.name}')
+        # status: phoenix6.StatusCode = phoenix6.StatusCode.STATUS_CODE_NOT_INITIALIZED
+        # for _ in range(0, 5):
+        #     # Apply configuration and check its status.
+        #     status = self.kraken.configurator.apply(configuration)
+        #     if status.is_ok():
+        #         break
+        # if not status.is_ok():
+        #     print(f'Could not apply configs, error code: {status.name}')
 
         #----------------------------------------------------------------------
         # Create several control request objects that we will send to the 
         # Kraken to describe what we want it to do.
 
         # Either brake or coast, depending on motor configuration; we chose brake above.
-        self.brake_request = phoenix6.controls.NeutralOut()
+        # self.brake_request = phoenix6.controls.NeutralOut()
 
         # Position request starts at position 0, but can be modified later.
-        self.position_request = phoenix6.controls.PositionVoltage(0).with_slot(0)
+        # self.position_request = phoenix6.controls.PositionVoltage(0).with_slot(0)
 
         # A motion magic (MM) position request. MM smooths the acceleration.
-        self.mm_pos_request = phoenix6.controls.MotionMagicVoltage(0).with_slot(1)
+        # self.mm_pos_request = phoenix6.controls.MotionMagicVoltage(0).with_slot(1)
 
 
     def disabledInit(self):
@@ -117,23 +117,23 @@ class Myrobot(wpilib.TimedRobot):
         right = self.xbox.getRightY()
 
         # Command motor operation.
-        # self.motor1.set(right)
+        self.motor1.set(right)
         # self.motor3.set(left)
 
         # self.motor2.set(0.0)
         # self.motor4.set(0.0)
 
         # Kraken, either brake or move to a position
-        desired_rotations = right * 5
-        if abs(desired_rotations) <= 0.1:
-            desired_rotations = 0
+        # desired_rotations = right * 5
+        # if abs(desired_rotations) <= 0.1:
+        #     desired_rotations = 0
 
-        if self.xbox.getRightBumper():
-            self.kraken.set_control(self.position_request.with_position(desired_rotations))
-        elif self.xbox.getLeftBumper():
-            self.kraken.set_control(self.mm_pos_request.with_position(desired_rotations))
-        else:
-            self.kraken.set_control(self.brake_request)
+        # if self.xbox.getRightBumper():
+        #     self.kraken.set_control(self.position_request.with_position(desired_rotations))
+        # elif self.xbox.getLeftBumper():
+        #     self.kraken.set_control(self.mm_pos_request.with_position(desired_rotations))
+        # else:
+        #     self.kraken.set_control(self.brake_request)
 
         if self.print_timer.advanceIfElapsed(0.2):
             wpilib.SmartDashboard.putString('DB/String 0', 'foo') #'rotations: {:5.1f}'.format(self.kraken.get_position().value))
