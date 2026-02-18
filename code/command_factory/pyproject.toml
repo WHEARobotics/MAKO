@@ -1,0 +1,34 @@
+[project]
+name = "MAKO"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "robotpy>=2026.2.1",
+]
+
+
+[tool.robotpy]
+
+# Version of robotpy this project depends on
+robotpy_version = "2026.2.1"
+
+# Which extra RobotPy components should be installed
+# -> equivalent to `pip install robotpy[extra1, ...]
+components = [
+    # "all",
+    "apriltag",
+    "commands2",
+    # "cscore",
+    # "navx",
+    # "romi",
+    "sim",
+    # "xrp",
+]
+
+requires = ["robotpy-apriltag", 
+            "robotpy-commands-v2", 
+            "phoenix6",
+            "robotpy-rev",
+]
