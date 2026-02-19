@@ -72,7 +72,8 @@ class ElevatorSubsystem(commands2.Subsystem):
             self.initialized = True
 
         # This is a trigger that can be used externally.
-        self.is_at_height = commands2.button.Trigger(self._is_at_position).debounce(0.5) # Debounce to make sure we are really there, not just passing through.
+        # Debounce to make sure we are really there, not just passing through.
+        self.is_at_height = commands2.button.Trigger(self._is_at_position).debounce(0.5)
 
 
     ###########################################################################
