@@ -5,15 +5,14 @@ from wpilib.shuffleboard import Shuffleboard, BuiltInWidgets
 
 from constants.operatorinterfaceconstants import UserInterface
 from constants.fieldconstants import Positions
-from constants.elevatorconstants import ElevatorConsts
 from commands.autos import Autos
 from commands.drivecommands import DriveCommands
-from commands.elevatorcommands import ElevatorCommands
 from constants.autoconstants import AutoConsts
 import subsystems.drivesubsystem
 import subsystems.elevatorsubsystem
 
 class RobotContainer:
+    # TODO: subclass sendable and override initSendable.
     """
     This class is where the bulk of the robot should be declared. Since Command-based is a
     "declarative" paradigm, very little robot logic should actually be handled in the :class:`.Robot`
@@ -30,8 +29,9 @@ class RobotContainer:
         # Driver controller(s)
         self.xbox = commands2.button.CommandXboxController(UserInterface.XBOX_PORT)
 
-        # Configure button bindings.
+        # Configure button bindings and trigger bindings.
         self.configureButtonBindings()
+        self.configureTriggerBindings()
 
         # Configure default commands.
         # Set the drive system to use the xbox controller when no other drive
@@ -48,17 +48,14 @@ class RobotContainer:
             )
         )
 
-        # Default for the elevator is to move to the last goal that had been set,
-        # basically, holding it in place.
+        # Default for the elevator is to go home. This will only run at the beginning,
+        # as button-triggered commands do not exit.
         self.elevator.setDefaultCommand(
-            commands2.RunCommand(
-                self.elevator.move_to_goal,
-                self.elevator,
-            )
+            self.elevator.set_home()
         )
-
         
         #Make a tab in shuffle board
+        # TODO: replace deprecated shuffleboard.
         self.tab = Shuffleboard.getTab("Test")
 
         #Auto chooser
@@ -80,9 +77,16 @@ class RobotContainer:
         """
         self.xbox.a().onTrue(DriveCommands.drive_goal(Positions.HOME, self.drive))
         self.xbox.b().onTrue(DriveCommands.drive_goal(Positions.FACE_NW, self.drive))
-        self.xbox.leftBumper().onTrue(ElevatorCommands.move_goal(ElevatorConsts.HOME, self.elevator))
-        self.xbox.rightBumper().onTrue(ElevatorCommands.move_goal(ElevatorConsts.MID, self.elevator))
+        self.xbox.leftBumper().onTrue(self.elevator.set_home().alongWith(commands2.cmd.runOnce(lambda: print("Going home!"))))
+        self.xbox.rightBumper().onTrue(self.elevator.set_mid().alongWith(commands2.cmd.runOnce(lambda: print("Going mid!"))))
 
+    def configureTriggerBindings(self):
+        """
+        Helper method to associate commands with triggers. Triggers are like buttons, but can be based on any boolean condition, not just joystick buttons.
+        """
+        # Example trigger: when the elevator is at the goal position, print "At goal!" to the console.
+        # The trigger is continuously evaluated, but only prints once each time it becomes true.
+        self.elevator.is_at_height.onTrue(commands2.cmd.runOnce(lambda: print("At goal!")))
 
     def getAutonomousCommand(self) -> commands2.Command:
         """

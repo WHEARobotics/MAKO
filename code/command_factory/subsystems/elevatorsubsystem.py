@@ -53,7 +53,7 @@ class ElevatorSubsystem(commands2.Subsystem):
 
 
         # Apply it to the motor.
-        self.motor.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+        self.motor.configure(config, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
 
         # A controller is how we adjust positions.
         self.controller = self.motor.getClosedLoopController()
@@ -70,6 +70,9 @@ class ElevatorSubsystem(commands2.Subsystem):
         if self.bottom_limit.get():
             self.encoder.setPosition(_inches_to_motor_rot(ElevatorConsts.HOME))
             self.initialized = True
+
+        # This is a trigger that can be used externally.
+        self.is_at_height = commands2.button.Trigger(self._is_at_position).debounce(0.5) # Debounce to make sure we are really there, not just passing through.
 
 
     ###########################################################################
@@ -93,17 +96,36 @@ class ElevatorSubsystem(commands2.Subsystem):
     # Methods that create commands                                            #
     ###########################################################################
 
+    def set_home(self) -> commands2.Command:
+        """Return a command that sets the current position as the home position."""
+        return commands2.cmd.run(lambda: self._move_to_position(ElevatorConsts.HOME), self)
+    
+    def set_mid(self) -> commands2.Command:
+        """Return a command that sets the current position as the mid position."""
+        return commands2.cmd.run(lambda: self._move_to_position(ElevatorConsts.MID), self)
+    
+    # Note: an alternate way to do this would be to have a single method that takes the height as an argument, 
+    # and then have the command factory methods call it with the appropriate height, as below.
+    # This makes the command factory methods more concise, but there is more overall code.
+
+    # def set_home(self) -> commands2.Command:
+    #     """Return a command that sets the current position as the home position."""
+    #     return self._set_position(ElevatorConsts.HOME)
+    
+    # def _set_position(self, height: float) -> commands2.Command:
+    #     """Return a command that moves the elevator to a given height."""
+    #     return commands2.cmd.run(lambda: self._move_to_position(height), self)
+
     ###########################################################################
     # Methods to use in commands, either created in this class or elsewhere   #
     ###########################################################################
 
-    def set_goal_height_inches(self, height: float):
-        """Set the goal in inches that the elevator drives toward"""
+    def _move_to_position(self, height: float):
+        """Set the goal to a height and move toward it."""
         # Convert because internally, we use rotations.
+        # Also caches the goal position for use in _is_at_position().
         self.goal_pos = _inches_to_motor_rot(height)
 
-    def move_to_goal(self):
-        """Move toward the goal position"""
         if self.initialized:
             self.controller.setReference(self.goal_pos, rev.SparkMax.ControlType.kPosition)
         else:
@@ -114,8 +136,10 @@ class ElevatorSubsystem(commands2.Subsystem):
                 self.encoder.setPosition(_inches_to_motor_rot(ElevatorConsts.HOME))
                 self.initialized = True
 
-    def is_at_goal(self) -> bool:
-        False # Never end unless interrupted.
+    def _is_at_position(self) -> bool:
+        """Return true if the elevator is at the desired position."""
+        return abs(self.encoder.getPosition() - self.goal_pos) < ElevatorConsts.ROT_TOLERANCE
+
 
     ###########################################################################
     # Helper methods                                                          #

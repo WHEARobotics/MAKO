@@ -22,3 +22,5 @@ class ElevatorConsts:
     # Heights in inches (lowest is 10.5, highest is ~55.5)
     HOME: float = 10.5 # Elevator at its lowest position.
     MID: float  = 34.5
+
+    ROT_TOLERANCE: float= 0.25 # 0.25 rotations is about 0.5 inches, which is good enough for our purposes.
