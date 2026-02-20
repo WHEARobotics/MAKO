@@ -53,7 +53,7 @@ class ElevatorSubsystem(commands2.Subsystem):
 
 
         # Apply it to the motor.
-        self.motor.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+        self.motor.configure(config, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
 
         # A controller is how we adjust positions.
         self.controller = self.motor.getClosedLoopController()

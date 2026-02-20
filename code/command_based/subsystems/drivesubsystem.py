@@ -61,13 +61,13 @@ class DriveSubsystem(commands2.Subsystem):
         config.IdleMode(rev.SparkMax.IdleMode.kCoast)
 
         # Configure left side as non-inverted.
-        self.drive_fl.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
-        self.drive_bl.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+        self.drive_fl.configure(config, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
+        self.drive_bl.configure(config, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
 
         # Invert and apply to the right side.
         config.inverted(True)
-        self.drive_fr.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
-        self.drive_br.configure(config, rev.SparkMax.ResetMode.kResetSafeParameters, rev.SparkMax.PersistMode.kPersistParameters)
+        self.drive_fr.configure(config, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
+        self.drive_br.configure(config, rev.ResetMode.kResetSafeParameters, rev.PersistMode.kPersistParameters)
 
         # Now that we have motors, we can set up an object that will handle mecanum drive.
         self.drivetrain = wpilib.drive.MecanumDrive(self.drive_fl, self.drive_bl, self.drive_fr, self.drive_br)
